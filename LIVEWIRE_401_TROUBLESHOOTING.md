@@ -1,198 +1,223 @@
 # LIVEWIRE 401 ERROR - PRODUCTION TROUBLESHOOTING
 
-## Status: Still Getting 401?
+## Status: Getting 401 on File Uploads?
 
-Jika masih error 401, ini adalah checklist yang HARUS dijalankan:
+Jika upload gambar masih error 401, ikuti checklist ini step-by-step.
 
-## 1️⃣ CRITICAL: Verify APP_KEY is identical
+## ⚠️ MOST IMPORTANT: The REAL Root Cause
 
-Ini adalah penyebab PALING UMUM 401 error!
+Livewire signed URLs memiliki expiry time embedded. If ada perbedaan **timezone** atau **server clock** antara local dan production:
+- Local signs URL: `expires=1765330741` (dalam local time)
+- Production validates: Checks against server time yang berbeda
+- Jika perbedaan > 5 menit: URL dianggap expired → 401
+
+## 1️⃣ Check Server Time & Timezone
 
 ```bash
-# On local machine:
-cat .env | grep APP_KEY
-# Result: APP_KEY=base64:8WT5nfgmvN16bpEtXwqZO9JM1mnhiK7lgbmHdfG/xYQ=
+# Production server - check current time
+date
+# Result: Should show current date/time
 
-# On production server:
-ssh user@your-domain.com
-cat .env | grep APP_KEY
-# Result: Should be IDENTICAL!
+# Check timezone
+timedatectl  # If available
+# or
+cat /etc/timezone
+# or  
+php -r "echo date_default_timezone_get();"
 ```
 
-**If different:** Copy production key to local or vice versa.
+**Action if timezone wrong:**
+```bash
+# Set to correct timezone (Asia/Jakarta example)
+sudo timedatectl set-timezone Asia/Jakarta
 
-The signed URL signature is generated using APP_KEY. If keys differ:
-- Local: Signs URL with key A → `signature=abc123`
-- Production: Validates with key B → signature invalid → 401 error
+# Or update php.ini
+sudo nano /etc/php/8.4/fpm/php.ini
+# Find: date.timezone = 
+# Set to: date.timezone = Asia/Jakarta
+# Save and restart PHP
 
-## 2️⃣ Deploy Latest Code
+# Verify
+php -r "echo date_default_timezone_get();"  # Should show Asia/Jakarta
+```
+
+## 2️⃣ Check APP_KEY Match
+
+```bash
+# Local machine
+cat .env | grep APP_KEY
+# Note down the value
+
+# Production server
+cat .env | grep APP_KEY
+# MUST be identical!
+```
+
+If different - **this is 401 cause!**
+
+## 3️⃣ Deploy Latest Code
 
 ```bash
 # Production server
 cd /path/to/qpay
-git pull origin master  # Gets simplified Livewire fix
+git pull origin master
 php artisan config:clear
 php artisan cache:clear
-php artisan view:clear
+php artisan route:clear
 ```
 
-## 3️⃣ Verify Directories Exist & Are Writable
+## 4️⃣ Verify Livewire Route Auto-Registers
 
 ```bash
-# Check temp upload directory
-ls -la storage/app/livewire-tmp
-# Should exist and be writable (permissions: drwxr-xr-x or similar)
+# Production server
+php artisan route:list | grep "livewire/upload"
+# Should show: POST livewire/upload-file ... Livewire\Features ... FileUploadController@handle
+```
 
-# If doesn't exist, create it
+If NOT showing, something's wrong with Livewire installation.
+
+## 5️⃣ Check Directories
+
+```bash
 mkdir -p storage/app/livewire-tmp
-chmod 755 storage/app/livewire-tmp
+mkdir -p storage/app/public
+chmod -R 755 storage/app/livewire-tmp
+chmod -R 755 storage/app/public
+chmod -R 755 storage/framework/
+chmod -R 755 bootstrap/cache/
+```
 
-# Check public storage
-ls -la storage/app/public
-# Should exist and be writable
+## 6️⃣ Verify Symlink
 
-# Check symlink
+```bash
 ls -la public/storage
-# Should be a symlink → storage/app/public
+# Should show: storage -> ../../storage/app/public
+
+# If missing:
+php artisan storage:link
 ```
 
-## 4️⃣ Verify Timezone Configuration
+## 7️⃣ Check APP_DEBUG & Monitor Logs
 
 ```bash
-# Check local PHP timezone
-php -r "echo date_default_timezone_get();"
-# Result: Asia/Jakarta (or your timezone)
+# Temporarily enable debug
+nano .env
+# Set: APP_DEBUG=true
+# Save
 
-# Check production PHP timezone  
-php -r "echo date_default_timezone_get();"
-# Result: Should match or at least be consistent
+php artisan config:clear
 
-# Check Laravel config
-php artisan config:get app.timezone
-```
-
-If timezones differ significantly (more than a few minutes), signature expiration might fail.
-
-## 5️⃣ Check APP_DEBUG Setting
-
-```bash
-# Production .env
-grep APP_DEBUG .env
-# Should be: APP_DEBUG=false (or true for testing)
-
-# If APP_DEBUG=false and error occurs:
-#  1. Temporarily set APP_DEBUG=true
-#  2. Clear caches
-#  3. Test upload
-#  4. Check storage/logs/laravel.log for details
-#  5. Set back to false
-```
-
-## 6️⃣ Monitor Logs While Testing
-
-In one terminal, tail the logs:
-```bash
+# In another terminal, watch logs
 tail -f storage/logs/laravel.log
 ```
 
-In another terminal, test upload through web interface.
+Then test upload. Look for errors in logs related to:
+- signature
+- expired
+- authorization
+- CSRF
+- gate
 
-Look for errors containing:
-- `signature` - signature mismatch
-- `expired` - timestamp expired
-- `unauthorized` - gate denied
-- `CSRF` - token issue
+After testing, set `APP_DEBUG=false` again.
 
-## 7️⃣ Browser Developer Tools
-
-When upload fails with 401:
-1. Open DevTools (F12)
-2. Go to Network tab
-3. Look for `livewire/upload-file` request
-4. Right-click → Edit and Resend → see response body
-5. Or click on request → Response tab → check error message
-
-## 8️⃣ Test Simple Upload First
-
-Don't test with large file. Try:
-1. Login to dashboard
-2. Go to Products
-3. Click "Add Product"
-4. Select SMALL image (< 1MB)
-5. Try upload
-6. Check console for exact error
-
-## 9️⃣ Restart Services
-
-After any .env or code changes:
+## 8️⃣ Restart Services
 
 ```bash
-# If using PHP-FPM
+# For PHP-FPM
 sudo systemctl restart php8.4-fpm
 
-# If using Apache
+# For Apache
 sudo systemctl restart apache2
 
-# If using Nginx
+# For Nginx
 sudo systemctl restart nginx
-
-# For supervisor/queue workers (if applicable)
-sudo supervisorctl restart all
 ```
 
-## 🔟 Nuclear Option - Full Redeploy
+## 9️⃣ Browser Network Tab Investigation
 
-If nothing works:
+1. Open browser DevTools (F12)
+2. Go to Network tab
+3. Try uploading image
+4. Find `livewire/upload-file` request (RED = failed)
+5. Click on it → Response tab
+6. Check error message
+
+Common responses:
+- `401 Unauthorized` - Signature failed or user not authenticated
+- `419 Expired Token` - CSRF token issue, not upload
+- `422 Unprocessable Entity` - File validation error
+- `500 Internal Error` - Server error, check logs
+
+## 🔟 The COMPLETE Fix (Most Reliable)
+
+Run this on production server (one command block at a time):
 
 ```bash
-# Stop all services
-sudo systemctl stop php8.4-fpm  # or apache2
+# Step 1: Update code
+cd /path/to/qpay
+git pull origin master
 
-# Delete compiled files
-rm -rf bootstrap/cache/*
-rm -rf storage/logs/*.log
-
-# Fresh setup
-composer install --no-dev
+# Step 2: Clear everything
 php artisan config:clear
 php artisan cache:clear
 php artisan view:clear
-php artisan storage:link
+php artisan route:clear
+
+# Step 3: Fix storage
+rm -rf storage/app/livewire-tmp/*
 mkdir -p storage/app/livewire-tmp
-chmod -R 755 storage/
-chmod -R 755 bootstrap/cache/
+mkdir -p storage/app/public
+chmod 755 storage/app/livewire-tmp
+chmod 755 storage/app/public
 
-# Start services
-sudo systemctl start php8.4-fpm  # or apache2
+# Step 4: Fix symlink
+rm -f public/storage
+php artisan storage:link
 
-# Test
-php artisan tinker
+# Step 5: Restart service
+sudo systemctl restart php8.4-fpm  # or apache2/nginx
+
+# Step 6: Check timezone
+php -r "echo 'Timezone: ' . date_default_timezone_get() . PHP_EOL . 'Time: ' . date('Y-m-d H:i:s') . PHP_EOL;"
 ```
 
-## Debugging Endpoint
+## Debugging Endpoint (If you can access)
 
-You can access `/debug/livewire-upload` while logged in:
 ```
 https://qpay.yourin.my.id/debug/livewire-upload
 ```
 
-This shows:
-- APP_KEY (first 20 chars)
+(Requires authentication)
+
+Shows:
+- APP_KEY (partial)
 - APP_ENV
 - FILESYSTEM_DISK
-- Storage paths
-- Directory writable status
-- Gate defined status
+- Directories writable status
+- Current time
 - USER_ID
 - IS_AUTHENTICATED
 
-## If Still 401 After All This
+## Still 401? Then Provide This Info
 
-Please provide:
-1. Output of `/debug/livewire-upload`
-2. Last 50 lines of `storage/logs/laravel.log`
-3. Output of `php artisan config:get app.key`
-4. Output of `ls -la storage/app/`
-5. Browser DevTools → Network → livewire/upload-file request Response
+1. Output of:
+   ```bash
+   php -r "echo 'Key: ' . env('APP_KEY') . PHP_EOL . 'TZ: ' . date_default_timezone_get() . PHP_EOL . 'Time: ' . date('Y-m-d H:i:s') . PHP_EOL;"
+   ```
 
-With this information we can diagnose the exact issue.
+2. Last 20 lines of `storage/logs/laravel.log`
+
+3. Browser DevTools Response for failed upload request
+
+4. Output of:
+   ```bash
+   php artisan route:list | grep livewire
+   ```
+
+5. Output of:
+   ```bash
+   ls -la storage/app/
+   ls -la public/storage
+   ```
+
+With this info, dapat identify exactly mana yang salah!
