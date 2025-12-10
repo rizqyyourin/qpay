@@ -5,7 +5,6 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,14 +32,5 @@ class AppServiceProvider extends ServiceProvider
             // Force URL generation to use HTTPS
             URL::forceRootUrl(config('app.url'));
         }
-
-        // Gate untuk Livewire file uploads
-        // Livewire calls this gate to authorize file uploads
-        // The signed URL ensures the request comes from an authenticated user
-        Gate::define('upload-files', function ($user) {
-            // User must be authenticated (checked via signed URL)
-            // If $user is null, the signed URL was invalid or expired
-            return $user !== null;
-        });
     }
 }

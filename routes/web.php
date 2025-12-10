@@ -13,14 +13,6 @@ use Illuminate\Support\Facades\Route;
 // Accessible to authenticated users only
 Route::middleware('auth')->get('/debug/livewire-upload', [DebugLivewireUploadController::class, 'index'])->name('debug.livewire-upload');
 
-// Livewire Upload Handler
-// Livewire auto-registers and handles this route
-// Authentication is verified via signed URLs
-// Gate authorization checked in AppServiceProvider
-Route::post('/livewire/upload-file', function () {
-    // This route is auto-handled by Livewire
-})->name('livewire.upload-file');
-
 // Public Routes
 Route::get('/', function () {
     return view('pages.home');
