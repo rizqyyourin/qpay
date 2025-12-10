@@ -42,27 +42,54 @@ tail -f storage/logs/laravel.log
 
 - [ ] `git pull origin master` completed
 - [ ] `php artisan config:clear && php artisan cache:clear` ran
-- [ ] `.env` has `APP_KEY=base64:...` (same as local)
+- [ ] `.env` has APP_KEY set and identical to all other instances
 - [ ] `.env` has `FILESYSTEM_DISK=public`
+- [ ] `storage/app/livewire-tmp` directory exists and is writable
 - [ ] `storage/app/public` directory writable (check with `ls -la`)
 - [ ] `public/storage` symlink exists
 - [ ] PHP-FPM/Apache restarted
-- [ ] Test file upload works
+- [ ] Test file upload works WITHOUT 401 error
 
 ## What Changed
 
 ```diff
-# config/livewire.php
-- 'middleware' => 'throttle:60,1',
-+ 'middleware' => ['auth', 'throttle:120,1'],
-
 # routes/web.php
-- Removed conflicting /livewire/upload-file route definition
++ Route::post('/livewire/upload-file', function () {
++     // Auto-handled by Livewire
++ })->middleware('throttle:120,1')->name('livewire.upload-file');
+
+# config/livewire.php
+- 'middleware' => ['auth', 'throttle:120,1'],
++ 'middleware' => 'throttle:120,1',
 
 # app/Providers/AppServiceProvider.php
 - Gate::define('livewire-upload', ...)
-+ Gate::define('upload-files', ...)
++ Gate::define('upload-files', function ($user) {
++     return $user !== null;  // User must be authenticated
++ })
 ```
+
+## Critical: Check APP_KEY
+
+This is the most common cause of 401 errors!
+
+```bash
+# On production server, get the APP_KEY
+grep APP_KEY .env
+
+# On local machine, compare
+grep APP_KEY .env
+```
+
+**They MUST be identical!** The signed URL signature uses APP_KEY. If they differ:
+- Local generates URL with key A
+- Production validates with key B
+- Signature doesn't match → 401 error
+
+If they're different:
+1. Copy APP_KEY from production: `cat .env | grep APP_KEY`
+2. Set it on local (or use same for both)
+3. Both environments must use same key for signature validation
 
 ## Testing Upload After Deployment
 
