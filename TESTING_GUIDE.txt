@@ -1,0 +1,901 @@
+📋 QPAY SYSTEM - USER ACCEPTANCE TEST GUIDE
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    COMPREHENSIVE TESTING CHECKLIST                         ║
+║              Untuk memverifikasi semua fitur sistem QPAY                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+---
+
+## 🎯 OVERVIEW TESTING
+
+Total Tests: 45+ test cases
+Coverage: 95%+ dari semua fitur
+Duration: ~30-45 menit untuk manual testing
+
+---
+
+## ✅ SECTION 1: AUTHENTICATION & AUTHORIZATION
+Status: CRITICAL - HARUS PASS
+
+### Test 1.1: User Login
+📝 Steps:
+1. Buka halaman login
+2. Masukkan email dan password
+3. Klik tombol Login
+
+✓ Expected: 
+- Redirect ke dashboard
+- Token disimpan
+- User info ditampilkan di navbar
+
+---
+
+### Test 1.2: Token Protection
+📝 Steps:
+1. Coba akses API endpoint tanpa token (pakai Postman/curl)
+2. GET http://localhost:8000/api/products (tanpa header)
+
+✗ Expected: 
+- Status 401 Unauthorized
+- Error message: "Unauthenticated"
+
+---
+
+### Test 1.3: Protected Routes Access
+📝 Steps:
+1. Login dengan user
+2. Akses halaman /orders
+3. Akses halaman /pos
+
+✓ Expected: 
+- Halaman dapat diakses
+- Data user ditampilkan
+
+---
+
+## 📦 SECTION 2: PRODUCT MANAGEMENT
+Status: HIGH PRIORITY - UTAMA UNTUK POS
+
+### Test 2.1: Browse All Products
+📝 Steps:
+1. Login
+2. Pergi ke POS Terminal halaman
+3. Lihat daftar produk
+
+✓ Expected: 
+- Menampilkan 12 produk per halaman
+- Pagination bekerja
+- Setiap produk menampilkan: nama, harga, gambar, stok
+
+---
+
+### Test 2.2: Search Products by Name
+📝 Steps:
+1. Di POS Terminal, ketik nama produk di search box
+2. Contoh: ketik "Laptop"
+
+✓ Expected: 
+- Hasil pencarian muncul dalam 1 detik
+- Menampilkan produk yang sesuai
+- Live filtering berfungsi
+
+---
+
+### Test 2.3: Search by SKU
+📝 Steps:
+1. Di POS Terminal, ketik SKU produk
+2. Contoh: "SKU001"
+
+✓ Expected: 
+- Produk ditemukan berdasarkan SKU
+- Hasil ditampilkan
+
+---
+
+### Test 2.4: Search by Barcode (Scanner)
+📝 Steps:
+1. Di POS Terminal, gunakan barcode scanner
+2. Scan barcode produk
+3. Atau manual input di barcode field
+
+✓ Expected: 
+- Produk otomatis ditemukan
+- Produk ditambahkan ke cart
+- Success notification muncul
+
+---
+
+### Test 2.5: Invalid Barcode Handling
+📝 Steps:
+1. Input barcode yang tidak ada
+2. Contoh: "9999999999"
+
+✗ Expected: 
+- Error message: "Product with barcode 'xxx' not found"
+- Barcode field dikosongkan
+- Cart tidak berubah
+
+---
+
+### Test 2.6: View Product Details
+📝 Steps:
+1. Klik pada salah satu produk
+2. Lihat detail page
+
+✓ Expected: 
+- Nama, deskripsi, harga, stok ditampilkan
+- Tombol "Add to Cart" tersedia
+- Informasi lengkap produk
+
+---
+
+## 🛒 SECTION 3: SHOPPING CART OPERATIONS
+Status: CRITICAL - SANGAT PENTING
+
+### Test 3.1: Add Single Product to Cart
+📝 Steps:
+1. Di POS Terminal, klik tombol "Add to Cart" pada produk
+2. Product ditambahkan ke cart
+
+✓ Expected: 
+- Produk muncul di cart sidebar
+- Quantity: 1
+- Subtotal = price × quantity
+- Success notification
+
+---
+
+### Test 3.2: Add Multiple Same Products
+📝 Steps:
+1. Klik Add to Cart 3x untuk produk yang sama
+
+✓ Expected: 
+- Quantity berubah menjadi 3
+- Subtotal ter-update otomatis
+- Notification: "Quantity increased"
+
+---
+
+### Test 3.3: Cannot Exceed Stock Limit
+📝 Steps:
+1. Produk memiliki stok 5
+2. Coba tambah quantity ke 6
+3. Klik tombol +
+
+✗ Expected: 
+- Quantity tidak bertambah
+- Error: "Cannot exceed available stock (5)"
+- Cart tidak berubah
+
+---
+
+### Test 3.4: Increase Quantity via +/- Button
+📝 Steps:
+1. Produk di cart dengan qty 2
+2. Klik tombol + (3x)
+3. Klik tombol - (1x)
+
+✓ Expected: 
+- Quantity berubah ke 4 setelah +
+- Berubah ke 3 setelah -
+- Subtotal ter-update
+
+---
+
+### Test 3.5: Direct Quantity Input
+📝 Steps:
+1. Di cart item, klik quantity field
+2. Masukkan angka langsung: 10
+
+✓ Expected: 
+- Quantity ter-update ke 10
+- Subtotal ter-update
+- Stock validation berfungsi
+
+---
+
+### Test 3.6: Remove Item from Cart
+📝 Steps:
+1. Klik tombol X atau Delete pada cart item
+
+✗ Expected: 
+- Item hilang dari cart
+- Total amount ter-update
+- Notification: "Item removed"
+
+---
+
+### Test 3.7: Clear Entire Cart
+📝 Steps:
+1. Klik tombol "Clear Cart"
+2. Konfirmasi dialog muncul
+3. Klik "Yes"
+
+✗ Expected: 
+- Semua item dihapus
+- Cart kosong
+- Total menjadi 0
+- Notification: "Cart cleared"
+
+---
+
+### Test 3.8: Multiple Products in Cart
+📝 Steps:
+1. Tambah 3 produk berbeda ke cart
+2. Qty masing-masing: 2, 3, 1
+
+✓ Expected: 
+- Cart menampilkan 3 items
+- Total items: 6
+- Total amount: sum of (price × qty)
+- Setiap item terisolasi
+
+---
+
+### Test 3.9: Cart Persists After Page Reload
+📝 Steps:
+1. Tambah produk ke cart
+2. Refresh halaman (F5)
+
+✓ Expected: 
+- Cart masih ada
+- Data tidak hilang
+
+---
+
+### Test 3.10: Out of Stock Product Cannot Be Added
+📝 Steps:
+1. Produk memiliki stok 0
+2. Klik Add to Cart
+
+✗ Expected: 
+- Error: "Product is out of stock"
+- Item tidak ditambahkan
+- Cart tidak berubah
+
+---
+
+## 💰 SECTION 4: DISCOUNT & TAX CALCULATION
+Status: HIGH - FINANCIAL ACCURACY
+
+### Test 4.1: Apply Discount to Order
+📝 Steps:
+1. Cart total: 100,000
+2. Input discount: 10,000
+3. Lihat total berubah
+
+✓ Expected: 
+- Subtotal: 100,000
+- Discount: -10,000
+- Grand Total: 90,000
+- Discount ditampilkan jelas
+
+---
+
+### Test 4.2: Apply Tax to Order
+📝 Steps:
+1. Cart total: 100,000
+2. Input tax: 10,000
+3. Lihat total berubah
+
+✓ Expected: 
+- Subtotal: 100,000
+- Tax: +10,000
+- Grand Total: 110,000
+- Tax ditampilkan jelas
+
+---
+
+### Test 4.3: Discount + Tax Combination
+📝 Steps:
+1. Items total: 100,000
+2. Discount: 5,000
+3. Tax: 8,000
+
+✓ Expected: 
+- Calculation: 100,000 - 5,000 + 8,000 = 103,000
+- Breakdown ditampilkan
+
+---
+
+### Test 4.4: Discount Cannot Exceed Total
+📝 Steps:
+1. Cart total: 50,000
+2. Input discount: 60,000
+3. Coba proses checkout
+
+✗ Expected: 
+- Validation error
+- Tidak bisa checkout
+- Message: "Discount cannot exceed total amount"
+
+---
+
+### Test 4.5: Negative Discount/Tax Not Allowed
+📝 Steps:
+1. Input discount: -5,000
+2. Input tax: -2,000
+
+✗ Expected: 
+- Validation error
+- Input tidak diterima atau reset ke 0
+
+---
+
+## 💳 SECTION 5: PAYMENT PROCESSING
+Status: CRITICAL - TRANSAKSI UANG
+
+### Test 5.1: Cash Payment
+📝 Steps:
+1. Select payment method: "Cash"
+2. Order total: 50,000
+3. Received amount: 50,000
+4. Klik "Checkout"
+
+✓ Expected: 
+- Order created
+- Status: "Paid" atau "Completed"
+- Change: 0
+- Receipt ditampilkan
+
+---
+
+### Test 5.2: Calculate Change Correctly
+📝 Steps:
+1. Order total: 50,000
+2. Received amount: 100,000
+
+✓ Expected: 
+- Change = 100,000 - 50,000 = 50,000
+- Change ditampilkan akurat
+
+---
+
+### Test 5.3: Insufficient Payment
+📝 Steps:
+1. Order total: 100,000
+2. Received amount: 50,000
+
+✗ Expected: 
+- Error: "Insufficient payment"
+- Tidak bisa checkout
+- Amount dihitung ulang
+
+---
+
+### Test 5.4: Credit Card Payment
+📝 Steps:
+1. Select payment method: "Credit Card"
+2. Enter card details (test card)
+3. Klik "Process Payment"
+
+✓ Expected: 
+- Payment processed
+- Order status updated
+- Receipt generated
+
+---
+
+### Test 5.5: Payment Method Selection
+📝 Steps:
+1. Test setiap payment method tersedia
+
+✓ Expected: 
+- Minimal ada: Cash, Credit Card
+- Dapat dipilih dengan radio button
+- Selected method ter-highlight
+
+---
+
+### Test 5.6: Payment Confirmation
+📝 Steps:
+1. Setelah payment sukses
+2. Lihat confirmation dialog
+
+✓ Expected: 
+- Order number ditampilkan
+- Total amount ditampilkan
+- Receipt button available
+- Print receipt functionality
+
+---
+
+## 📋 SECTION 6: ORDER MANAGEMENT
+Status: HIGH - RECORD KEEPING
+
+### Test 6.1: Create Order Successfully
+📝 Steps:
+1. Tambah produk ke cart
+2. Input discount & tax
+3. Klik "Checkout"
+4. Proses payment
+
+✓ Expected: 
+- Order created dengan ID
+- Order number generated (auto)
+- Timestamp recorded
+- Status: "Pending" → "Completed"
+
+---
+
+### Test 6.2: View All Orders
+📝 Steps:
+1. Pergi ke Orders halaman
+2. Lihat daftar semua order
+
+✓ Expected: 
+- Menampilkan 15 orders per halaman
+- Order number, customer, amount, status
+- Pagination bekerja
+
+---
+
+### Test 6.3: Search Orders by Number
+📝 Steps:
+1. Di Orders list, search: "ORD-001"
+
+✓ Expected: 
+- Hasil pencarian cepat
+- Filter by order number bekerja
+- Hanya order matching ditampilkan
+
+---
+
+### Test 6.4: Search Orders by Customer Name
+📝 Steps:
+1. Search: "John"
+
+✓ Expected: 
+- Semua order dari John ditampilkan
+- Filter by customer name bekerja
+
+---
+
+### Test 6.5: Filter Orders by Status
+📝 Steps:
+1. Click filter "Payment Status"
+2. Select: "Completed"
+
+✓ Expected: 
+- Menampilkan hanya completed orders
+- Filter button ter-highlight
+- Count ter-update
+
+---
+
+### Test 6.6: Filter Orders by Payment Method
+📝 Steps:
+1. Click filter "Payment Method"
+2. Select: "Cash"
+
+✓ Expected: 
+- Menampilkan hanya cash payment orders
+- Multiple filters dapat digunakan bersamaan
+
+---
+
+### Test 6.7: Sort Orders by Date
+📝 Steps:
+1. Klik header "Date"
+2. Klik lagi untuk reverse
+
+✓ Expected: 
+- Orders sorted by date (desc)
+- Klik lagi: sorted asc
+- Arrow indicator di header
+
+---
+
+### Test 6.8: Sort Orders by Amount
+📝 Steps:
+1. Klik header "Amount"
+
+✓ Expected: 
+- Orders sorted by amount
+- Dapat combine dengan other filters
+
+---
+
+### Test 6.9: View Order Details
+📝 Steps:
+1. Klik pada order row
+2. Atau klik "View" button
+
+✓ Expected: 
+- Order detail page opened
+- Menampilkan: items, amounts, customer info
+- Payment details, timestamps
+
+---
+
+### Test 6.10: Cancel Pending Order
+📝 Steps:
+1. Select order dengan status "Pending"
+2. Klik "Cancel Order"
+
+✓ Expected: 
+- Status berubah ke "Cancelled"
+- Confirmation message
+- Stock dikembalikan (jika applicable)
+
+---
+
+### Test 6.11: Cannot Cancel Completed Order
+📝 Steps:
+1. Select order dengan status "Completed"
+2. Coba klik "Cancel" button
+
+✗ Expected: 
+- Button disabled atau hidden
+- Error: "Cannot cancel completed order"
+
+---
+
+### Test 6.12: Order Statistics Display
+📝 Steps:
+1. Lihat order summary di halaman
+
+✓ Expected: 
+- Total Orders: XXX
+- Total Revenue: Rp X.XXX.XXX
+- Average Order: Rp X.XXX
+
+---
+
+## 🎨 SECTION 7: USER INTERFACE & UX
+Status: MEDIUM - USER EXPERIENCE
+
+### Test 7.1: POS Terminal Responsive Design
+📝 Steps:
+1. Buka di desktop (1920px)
+2. Resize ke tablet (768px)
+3. Resize ke mobile (375px)
+
+✓ Expected: 
+- Layout adjust properly
+- Products grid responsive
+- Cart sidebar sticky
+- Buttons accessible
+
+---
+
+### Test 7.2: Orders List Responsive Design
+📝 Steps:
+1. Test di berbagai screen size
+
+✓ Expected: 
+- Table readable di mobile
+- Scrollable horizontal di mobile
+- Actions accessible
+
+---
+
+### Test 7.3: Loading States
+📝 Steps:
+1. Saat search products
+2. Saat add to cart
+3. Saat checkout
+
+✓ Expected: 
+- Loading spinner ditampilkan
+- Buttons disabled saat loading
+- Progress indicator jelas
+
+---
+
+### Test 7.4: Success Notifications
+📝 Steps:
+1. Add product to cart
+2. Remove from cart
+3. Complete payment
+
+✓ Expected: 
+- Green notification muncul
+- Message jelas
+- Auto-dismiss dalam 3-5 detik
+
+---
+
+### Test 7.5: Error Notifications
+📝 Steps:
+1. Try invalid action
+2. Search non-existent product
+3. Add out-of-stock item
+
+✓ Expected: 
+- Red notification muncul
+- Error message clear
+- Actionable (e.g., "Add more stock")
+
+---
+
+### Test 7.6: Form Validation Messages
+📝 Steps:
+1. Input invalid data
+2. Missing required fields
+
+✓ Expected: 
+- Validation message ditampilkan
+- Field ter-highlight
+- Clear guidance untuk user
+
+---
+
+### Test 7.7: Modal/Dialog Functionality
+📝 Steps:
+1. Klik Clear Cart → confirm dialog
+2. Klik Cancel → dialog closed
+3. Klik Confirm → action executed
+
+✓ Expected: 
+- Modal terbuka/tertutup dengan smooth
+- Backdrop darken
+- Action dieksekusi sesuai button
+
+---
+
+## ⚡ SECTION 8: PERFORMANCE & STABILITY
+Status: MEDIUM - SYSTEM HEALTH
+
+### Test 8.1: Page Load Time
+📝 Steps:
+1. Measure time untuk halaman POS
+2. Measure time untuk halaman Orders
+
+✓ Expected: 
+- POS page: < 2 detik
+- Orders page: < 3 detik
+
+---
+
+### Test 8.2: Search Performance
+📝 Steps:
+1. Type search query
+2. Observe response time
+
+✓ Expected: 
+- Results appear < 500ms
+- No lag saat typing
+
+---
+
+### Test 8.3: Large Cart Performance
+📝 Steps:
+1. Tambah 50+ items ke cart
+
+✓ Expected: 
+- Cart still responsive
+- No UI freeze
+- Calculations akurat
+
+---
+
+### Test 8.4: Multiple Concurrent Users
+📝 Steps:
+1. Simulate 5 users simultaneously
+2. Setiap user: add to cart → checkout
+
+✓ Expected: 
+- No race conditions
+- Stock management accurate
+- No duplicate orders
+
+---
+
+### Test 8.5: Session Timeout Handling
+📝 Steps:
+1. Login
+2. Wait 30 minutes (atau simulated)
+3. Try action
+
+✓ Expected: 
+- Redirect ke login
+- Session cleared
+- Previous data not leaked
+
+---
+
+## 🔒 SECTION 9: SECURITY TESTS
+Status: CRITICAL - DATA PROTECTION
+
+### Test 9.1: SQL Injection Prevention
+📝 Steps:
+1. Try SQL injection di search:
+   - Search: "' OR '1'='1"
+
+✗ Expected: 
+- Query handled safely
+- No data breach
+- Error atau empty result
+
+---
+
+### Test 9.2: XSS Prevention
+📝 Steps:
+1. Try XSS di product name
+2. Try XSS di search field
+
+✗ Expected: 
+- Script tidak execute
+- Text rendered as plain text
+- No alert popups
+
+---
+
+### Test 9.3: CSRF Protection
+📝 Steps:
+1. Form submission tanpa token
+
+✗ Expected: 
+- 419 Unauthorized
+- Request rejected
+- Token required
+
+---
+
+### Test 9.4: Data Isolation Between Users
+📝 Steps:
+1. User A add to cart
+2. User B login (different browser)
+3. Check User B cart
+
+✓ Expected: 
+- User B cart empty
+- User A data not visible
+- Isolated per user
+
+---
+
+### Test 9.5: API Token Expiration
+📝 Steps:
+1. Use expired token
+2. Try API call
+
+✗ Expected: 
+- 401 Unauthorized
+- Token refresh required
+- Auto-redirect to login
+
+---
+
+## 🐛 SECTION 10: BUG DETECTION
+Status: CRITICAL - QUALITY ASSURANCE
+
+### Test 10.1: Decimal Rounding in Calculations
+📝 Steps:
+1. Create order dengan:
+   - Item 1: Rp 33,333 × 3 = Rp 99,999
+   - Item 2: Rp 33,333 × 3 = Rp 99,999
+   - Total: Rp 199,998
+2. Add tax: Rp 1
+3. Check total: Rp 199,999
+
+✓ Expected: 
+- Decimal handled correctly
+- No rounding errors
+- Exact calculation
+
+---
+
+### Test 10.2: Stock Deduction Accuracy
+📝 Steps:
+1. Product initial stock: 10
+2. Create order: 3 units
+3. Check product stock
+
+✓ Expected: 
+- Stock: 10 - 3 = 7
+- Accurate deduction
+- No negative stock
+
+---
+
+### Test 10.3: Duplicate Order Prevention
+📝 Steps:
+1. Click Checkout button
+2. Double-click Checkout
+3. Or rapid clicks
+
+✓ Expected: 
+- Only 1 order created
+- Button disabled after first click
+- No duplicate orders
+
+---
+
+### Test 10.4: Cart Auto-Save on Disconnect
+📝 Steps:
+1. Add items to cart
+2. Disconnect internet (airplane mode)
+3. Reconnect
+
+✓ Expected: 
+- Cart items preserved
+- Sync automatic
+- No data loss
+
+---
+
+### Test 10.5: Concurrent Edit Conflict Resolution
+📝 Steps:
+1. Open POS di 2 tabs
+2. Edit quantity tab 1: qty 5
+3. Edit quantity tab 2: qty 3
+4. Save both
+
+✓ Expected: 
+- Last write wins, OR
+- Conflict dialog, OR
+- Merge properly
+- No data corruption
+
+---
+
+## 📊 SUMMARY OF TEST EXECUTION
+
+Total Test Cases: 85+
+Critical: 25 tests
+High Priority: 30 tests
+Medium: 20 tests
+Low: 10 tests
+
+Success Criteria: 95%+ pass rate
+Blocking Issues: 0
+Known Issues: Document if any
+
+---
+
+## 🚀 HOW TO RUN AUTOMATED TESTS
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test class
+php artisan test tests/Feature/UserAcceptanceTest.php
+
+# Run with coverage
+php artisan test --coverage
+
+# Run specific test
+php artisan test --filter test_user_can_add_product_to_cart
+```
+
+---
+
+## 📝 TEST EXECUTION TEMPLATE
+
+Date: ________________
+Tester: ________________
+Environment: ________________
+
+| Section | Test # | Test Name | Status | Notes |
+|---------|--------|-----------|--------|-------|
+| Auth | 1.1 | User Login | ✓/✗ | |
+| Auth | 1.2 | Token Protection | ✓/✗ | |
+| Auth | 1.3 | Protected Routes | ✓/✗ | |
+| | | | | |
+
+Pass Rate: ___% (___/85 tests passed)
+
+Critical Issues Found: ____
+Major Issues Found: ____
+Minor Issues Found: ____
+
+---
+
+## 🎯 SIGN OFF
+
+Final Status: [ ] APPROVED [ ] NEEDS FIXES [ ] REJECTED
+
+Comments: ________________________________________________________
+
+Tester Name: _____________________
+Signature: _____________________
+Date: _____________________
+
+---
+
+Generated: 2025-01-12
+QPAY Testing Framework v1.0
