@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,9 +27,18 @@ class AppServiceProvider extends ServiceProvider
         Blade::component('layouts.auth', 'auth-layout');
         Blade::component('layouts.public', 'public-layout');
 
-        // Force HTTPS when APP_URL uses HTTPS
-        if (str_starts_with(config('app.url', ''), 'https://')) {
+        // Force HTTPS in production
+        if ($this->app->environment('production')) {
             URL::forceScheme('https');
+            // Force URL generation to use HTTPS
+            URL::forceRootUrl(config('app.url'));
         }
+
+        // Configure Livewire for file uploads
+        Livewire::configureFileUploads(
+            maxUploadSize: 10 * 1024 * 1024, // 10MB
+            disk: 'local',
+            directory: 'livewire-tmp'
+        );
     }
 }
