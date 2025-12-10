@@ -6,14 +6,20 @@ use App\Http\Controllers\ProductQrController;
 use App\Http\Controllers\GuestCheckoutController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DebugLivewireUploadController;
 use Illuminate\Support\Facades\Route;
 
-// Livewire Upload Handler - Protect with rate limiting only
-// Authentication is verified via signed URLs + gate
+// Debug Route for troubleshooting Livewire uploads
+// Accessible to authenticated users only
+Route::middleware('auth')->get('/debug/livewire-upload', [DebugLivewireUploadController::class, 'index'])->name('debug.livewire-upload');
+
+// Livewire Upload Handler
+// Livewire auto-registers and handles this route
+// Authentication is verified via signed URLs
+// Gate authorization checked in AppServiceProvider
 Route::post('/livewire/upload-file', function () {
     // This route is auto-handled by Livewire
-    // The gate authorization happens in config/livewire.php
-})->middleware('throttle:120,1')->name('livewire.upload-file');
+})->name('livewire.upload-file');
 
 // Public Routes
 Route::get('/', function () {

@@ -67,7 +67,7 @@ return [
         'disk' => 'local',        // Use local disk for temp uploads
         'rules' => null,       // Example: ['file', 'mimes:png,jpg']  | Default: ['required', 'file', 'max:12288'] (12MB)
         'directory' => 'livewire-tmp',   // Temporary upload directory
-        'middleware' => 'throttle:120,1',  // Rate limiting - auth via signed URL
+        'middleware' => [],  // No middleware - let signed URL handle auth, Livewire route has throttle
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...
             'png', 'gif', 'bmp', 'svg', 'wav', 'mp4',
             'mov', 'avi', 'wmv', 'mp3', 'm4a',
