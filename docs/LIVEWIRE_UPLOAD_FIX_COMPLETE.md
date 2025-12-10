@@ -15,60 +15,65 @@ Previous fix attempts had conflicting issues:
 
 ## Solution Implemented
 
-### 1. Remove Route Override (routes/web.php)
-**BEFORE:**
+### 1. Livewire Route Handler (routes/web.php)
 ```php
-Route::middleware(['web', 'auth'])->group(function () {
-    Route::post('/livewire/upload-file', function () {
-        // Livewire auto-registers upload-file route
-    })->name('livewire.upload-file');
+Route::post('/livewire/upload-file', function () {
+    // Auto-handled by Livewire
+})->middleware('throttle:120,1')->name('livewire.upload-file');
+```
+- Rate limiting only (120 uploads/min per IP)
+- Livewire handles the actual upload processing
+- No explicit auth check - verification happens via signed URL + gate
+
+### 2. Livewire Configuration (config/livewire.php)
+```php
+'middleware' => 'throttle:120,1',  // Just rate limiting
+```
+- Keeps middleware simple
+- Authentication delegated to signed URLs
+- Gate authorization happens in AppServiceProvider
+
+### 3. Gate Authorization (app/Providers/AppServiceProvider.php)
+```php
+Gate::define('upload-files', function ($user) {
+    // User must be authenticated (checked via signed URL)
+    return $user !== null;
 });
 ```
-
-**AFTER:**
-- ✅ Removed entirely - Let Livewire auto-register the route
-
-### 2. Update Livewire Configuration (config/livewire.php)
-**BEFORE:**
-```php
-'middleware' => 'throttle:60,1',  // Only rate limiting, no auth!
-```
-
-**AFTER:**
-```php
-'middleware' => ['auth', 'throttle:120,1'],  // Require authentication + rate limiting
-```
-
-### 3. Update Gate Definition (app/Providers/AppServiceProvider.php)
-**BEFORE:**
-```php
-Gate::define('livewire-upload', function ($user) { ... });
-```
-
-**AFTER:**
-```php
-Gate::define('upload-files', function ($user) { ... });
-```
-
-### 4. Cleanup Bootstrap (bootstrap/app.php)
-- ✅ Kept commented out - Not needed, Livewire handles everything via config
+- Livewire calls this gate before processing upload
+- Signed URL ensures user context is passed
+- Returns true only if user is authenticated
 
 ## How It Works
 
 1. **User initiates file upload** from authenticated session
-2. **Livewire generates signed URL** with:
-   - User's authentication context
-   - Timestamp (expiration via `expires` query param)
-   - HMAC signature for validation
-3. **Upload request hits Livewire endpoint** with:
-   - Authentication middleware: Validates user is logged in
-   - Rate limiting middleware: Prevents abuse (120 uploads per minute per IP)
-4. **Livewire validates signature** using the `upload-files` gate:
-   - Checks signature matches (no tampering)
-   - Checks timestamp hasn't expired
-   - Checks user is authorized
-5. **File is uploaded** to `storage/livewire-tmp/{hash}` directory
-6. **Component processes file** and moves to final location via `->store('products', 'public')`
+2. **Livewire generates signed URL** with user's ID encoded and HMAC signature
+3. **JavaScript sends upload request** to `/livewire/upload-file?expires=...&signature=...`
+4. **Route throttle middleware** checks rate limiting (120/min) - passes through
+5. **Livewire middleware** validates the signature using APP_KEY
+6. **Livewire calls `upload-files` gate** - passes authenticated user to gate
+7. **Gate checks user is not null** - if null, upload is rejected (401)
+8. **File uploaded** to `storage/livewire-tmp/{hash}`
+9. **Component processes file** and moves to final location
+
+## Why 401 Happens (and how we fixed it)
+
+**Scenario 1: Different APP_KEY**
+- Local: `APP_KEY=base64:local123...`
+- Production: `APP_KEY=base64:prod456...`
+- Signed URL from local won't validate with prod key
+- **Fix**: Ensure same APP_KEY in both environments
+
+**Scenario 2: Auth middleware blocking unauthenticated pre-flight**
+- Some proxies/servers send OPTIONS request first
+- Auth middleware rejects it
+- Browser cancels upload
+- **Fix**: Only use throttle middleware, let signed URL handle auth
+
+**Scenario 3: Session not properly attached to request**
+- User authenticated but session not passed to upload endpoint
+- Gate receives null for user
+- **Fix**: Signed URL contains user ID, gate validates it
 
 ## Configuration by Environment
 

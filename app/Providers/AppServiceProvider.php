@@ -35,11 +35,12 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Gate untuk Livewire file uploads
-        // Verifikasi signed URL via Gate - Livewire akan call ini sebelum upload
+        // Livewire calls this gate to authorize file uploads
+        // The signed URL ensures the request comes from an authenticated user
         Gate::define('upload-files', function ($user) {
-            // Allow upload jika user authenticated
-            // Livewire signed URLs sudah handle authorization
-            return true;
+            // User must be authenticated (checked via signed URL)
+            // If $user is null, the signed URL was invalid or expired
+            return $user !== null;
         });
     }
 }

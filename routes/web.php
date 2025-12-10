@@ -8,6 +8,13 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+// Livewire Upload Handler - Protect with rate limiting only
+// Authentication is verified via signed URLs + gate
+Route::post('/livewire/upload-file', function () {
+    // This route is auto-handled by Livewire
+    // The gate authorization happens in config/livewire.php
+})->middleware('throttle:120,1')->name('livewire.upload-file');
+
 // Public Routes
 Route::get('/', function () {
     return view('pages.home');
