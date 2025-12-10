@@ -26,8 +26,8 @@ class AppServiceProvider extends ServiceProvider
         Blade::component('layouts.auth', 'auth-layout');
         Blade::component('layouts.public', 'public-layout');
 
-        // Force HTTPS in production
-        if ($this->app->environment('production')) {
+        // Force HTTPS when APP_URL uses HTTPS
+        if (str_starts_with(config('app.url', ''), 'https://')) {
             URL::forceScheme('https');
         }
     }
