@@ -19,27 +19,27 @@
 
         <!-- Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="card bg-gradient-to-br from-primary to-primary-focus text-primary-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <p class="text-sm opacity-90">Total Sales</p>
-                    <p class="text-3xl font-bold">Rp 12.450.000</p>
-                    <p class="text-xs opacity-75">Period January 2025</p>
+                    <p class="text-base-content/60 text-sm">Total Sales</p>
+                    <p class="text-3xl font-bold text-primary">Rp 12.450.000</p>
+                    <p class="text-xs text-base-content/50">Period January 2025</p>
                 </div>
             </div>
 
-            <div class="card bg-gradient-to-br from-secondary to-secondary-focus text-secondary-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <p class="text-sm opacity-90">Total Orders</p>
-                    <p class="text-3xl font-bold">247</p>
-                    <p class="text-xs opacity-75">+15% from last month</p>
+                    <p class="text-base-content/60 text-sm">Total Orders</p>
+                    <p class="text-3xl font-bold text-primary">247</p>
+                    <p class="text-xs text-base-content/50">+15% from last month</p>
                 </div>
             </div>
 
-            <div class="card bg-gradient-to-br from-accent to-accent-focus text-accent-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <p class="text-sm opacity-90">Average Order</p>
-                    <p class="text-3xl font-bold">Rp 50.404</p>
-                    <p class="text-xs opacity-75">Per transaction</p>
+                    <p class="text-base-content/60 text-sm">Average Order</p>
+                    <p class="text-3xl font-bold text-primary">Rp 50.404</p>
+                    <p class="text-xs text-base-content/50">Per transaction</p>
                 </div>
             </div>
         </div>

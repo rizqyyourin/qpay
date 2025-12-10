@@ -45,22 +45,22 @@
 
         <!-- Summary Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="card bg-primary text-primary-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <h3 class="card-title text-lg">Total Orders</h3>
-                    <p class="text-3xl font-bold">{{ $stats['total_orders'] }}</p>
+                    <h3 class="card-title text-lg text-base-content">Total Orders</h3>
+                    <p class="text-3xl font-bold text-primary">{{ $stats['total_orders'] }}</p>
                 </div>
             </div>
-            <div class="card bg-success text-success-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <h3 class="card-title text-lg">Total Revenue</h3>
-                    <p class="text-3xl font-bold">Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</p>
+                    <h3 class="card-title text-lg text-base-content">Total Revenue</h3>
+                    <p class="text-3xl font-bold text-primary">Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</p>
                 </div>
             </div>
-            <div class="card bg-info text-info-content shadow">
+            <div class="card bg-base-100 border border-base-300 shadow">
                 <div class="card-body">
-                    <h3 class="card-title text-lg">Average Order</h3>
-                    <p class="text-3xl font-bold">Rp {{ number_format($stats['average_order'] ?? 0, 0, ',', '.') }}</p>
+                    <h3 class="card-title text-lg text-base-content">Average Order</h3>
+                    <p class="text-3xl font-bold text-primary">Rp {{ number_format($stats['average_order'] ?? 0, 0, ',', '.') }}</p>
                 </div>
             </div>
         </div>
