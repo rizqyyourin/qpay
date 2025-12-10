@@ -12,9 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [
-            \App\Http\Middleware\HandleLivewireUploads::class,
-        ]);
+        // Note: HandleLivewireUploads middleware commented out
+        // Livewire handles auth via signed URLs and config
+        // $middleware->web(append: [
+        //     \App\Http\Middleware\HandleLivewireUploads::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
