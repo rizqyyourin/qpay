@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Gate untuk Livewire file uploads
         // Verifikasi signed URL via Gate - Livewire akan call ini sebelum upload
-        Gate::define('livewire-upload', function ($user) {
+        Gate::define('upload-files', function ($user) {
             // Allow upload jika user authenticated
             // Livewire signed URLs sudah handle authorization
             return true;

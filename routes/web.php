@@ -8,14 +8,6 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-// Livewire File Upload Routes - Protected
-Route::middleware(['web', 'auth'])->group(function () {
-    // Livewire auto-registers upload-file route, but we ensure auth here
-    Route::post('/livewire/upload-file', function () {
-        // This route is handled by Livewire, but middleware ensures auth
-    })->name('livewire.upload-file');
-});
-
 // Public Routes
 Route::get('/', function () {
     return view('pages.home');
