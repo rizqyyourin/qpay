@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		color-scheme: light;
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	body {
+		@apply bg-white text-slate-950 antialiased;
+		font-family: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
+	}
+
+	* {
+		@apply border-slate-200;
+	}
+}
+
+@layer utilities {
+	.bg-grid-dots {
+		background-image: radial-gradient(circle, rgba(15, 23, 42, 0.12) 1.4px, transparent 1.4px);
+		background-size: 18px 18px;
+	}
+
+	.text-balance {
+		text-wrap: balance;
+	}
+}
+
+@keyframes blob {
+	0% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+
+	33% {
+		transform: translate3d(28px, -24px, 0) scale(1.08);
+	}
+
+	66% {
+		transform: translate3d(-20px, 20px, 0) scale(0.94);
+	}
+
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+}
+
+@keyframes progress-flow {
+	0% {
+		transform: translateX(-100%);
+	}
+
+	100% {
+		transform: translateX(220%);
+	}
+}
+
+@keyframes slide-up-fade {
+	0% {
+		opacity: 0;
+		transform: translate3d(0, 20px, 0);
+	}
+
+	100% {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+.animate-blob {
+	animation: blob 11s infinite ease-in-out;
+}
+
+.animate-progress-flow {
+	animation: progress-flow 2.5s linear infinite;
+}
+
+.animate-slide-up-fade {
+	animation: slide-up-fade 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animation-delay-2000 {
+	animation-delay: 2s;
+}
