@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'pollinations' => [
+        'key' => env('POLLINATIONS_API_KEY'),
+        'text_model' => env('POLLINATIONS_TEXT_MODEL', 'openai'),
+        'image_model' => env('POLLINATIONS_IMAGE_MODEL', 'flux'),
+        'width' => (int) env('POLLINATIONS_IMAGE_WIDTH', 1024),
+        'height' => (int) env('POLLINATIONS_IMAGE_HEIGHT', 1024),
+    ],
+
 ];

@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\BuyController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderStatusController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -14,11 +19,53 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/buy/{product}', [BuyController::class, 'show'])->name('buy.show');
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+Route::get('/order/{code}', [OrderStatusController::class, 'show'])->name('order.status');
+
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    return Inertia::render('Dashboard', [
+        'products'       => auth()->user()->products()->latest()->get(),
+        'ai_enabled'     => (bool) auth()->user()->ai_enabled,
+        'pending_orders' => auth()->user()->orders()
+            ->with('items')
+            ->where('status', 'pending')
+            ->latest()
+            ->get()
+            ->map(fn ($order) => [
+                'id'         => $order->id,
+                'code'       => $order->code,
+                'total'      => $order->total,
+                'created_at' => $order->created_at,
+                'items'      => $order->items->map(fn ($item) => [
+                    'name'  => $item->product_name,
+                    'price' => $item->price,
+                    'qty'   => $item->qty,
+                ]),
+            ]),
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::patch('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+    Route::post('/checkout', [ProductController::class, 'checkout'])->name('checkout');
+    Route::patch('/settings/ai-toggle', function (\Illuminate\Http\Request $request) {
+        $request->user()->update(['ai_enabled' => (bool) $request->input('ai_enabled')]);
+        return back();
+    })->name('settings.ai-toggle');
+
+    Route::patch('/settings/store-name', function (\Illuminate\Http\Request $request) {
+        $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $request->user()->update(['name' => $request->input('name')]);
+        return back();
+    })->name('settings.store-name');
+
+    Route::post('/orders/{order}/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

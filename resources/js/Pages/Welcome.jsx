@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
     Calculator,
+    Image as ImageIcon,
     Loader2,
     Menu,
     Package,
@@ -13,35 +14,30 @@ import {
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/Components/ui/button';
+import { generatePromoAssets, hasAiProvider } from '@/lib/qpay-ai';
 
 const features = [
     {
         icon: Package,
-        title: '1. Tambah Produk',
+        title: '1. Add Product',
         description:
-            'Foto produkmu, masukkan nama dan harga. Semudah bikin status. Katalog toko langsung siap dipakai jualan.',
+            'Snap your product photo, enter the name and price. As easy as posting a status. Your store catalog is instantly ready to sell.',
         tone: 'orange',
     },
     {
         icon: QrCode,
         title: '2. Generate QR Code',
         description:
-            'Setiap produk punya QR unik untuk scan product as you go. Pembeli ambil barang, scan, lalu lanjut checkout.',
+            'Every product gets a unique QR for scan-as-you-go. Customers pick up items, scan them, then proceed to checkout.',
         tone: 'dark',
     },
     {
         icon: Calculator,
-        title: '3. POS & Transaksi',
+        title: '3. POS & Transactions',
         description:
-            'Kasir tetap cepat, pembeli tetap praktis. Total, kupon, dan struk digital tampil rapi dalam satu alur.',
+            'Cashier stays fast, customers stay happy. Totals, coupons, and digital receipts all displayed neatly in one flow.',
         tone: 'orange',
     },
-];
-
-const promoTemplates = [
-    'Lagi cari {name} yang bikin balik lagi? Ini dia favorit pelanggan hari ini. Wajib masuk keranjang sekarang juga! 🔥☕',
-    '{name} lagi siap jadi menu andalan toko kamu. Rasanya mantap, tampilannya cantik, dan cocok banget buat repeat order. ✨🛍️',
-    'Buat yang mau jualan makin laris, {name} ini wajib naik ke etalase depan. Wangi, menggoda, dan auto bikin penasaran. 🤎🚀',
 ];
 
 function MockPreview({ productName }) {
@@ -64,35 +60,38 @@ function MockPreview({ productName }) {
 
 export default function Welcome({ auth, canLogin, canRegister }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [productInput, setProductInput] = useState('Kopi Susu Gula Aren Spesial');
+    const [productInput, setProductInput] = useState('Special Brown Sugar Latte');
     const [promoResult, setPromoResult] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [aiError, setAiError] = useState('');
+    const [generatedImage, setGeneratedImage] = useState(null);
 
     const demoLabel = useMemo(() => {
         if (auth?.user) {
-            return 'Buka Dashboard';
+            return 'Open Dashboard';
         }
 
-        return 'Masuk / Daftar';
+        return 'Login / Register';
     }, [auth?.user]);
 
     const demoHref = auth?.user ? route('dashboard') : route('login');
 
-    const generatePromo = () => {
+    const generatePromo = async () => {
         if (!productInput.trim()) {
             return;
         }
 
         setIsGenerating(true);
+        setAiError('');
+        setPromoResult('');
+        setGeneratedImage(null);
 
-        window.setTimeout(() => {
-            const template =
-                promoTemplates[
-                    Math.floor(Math.random() * promoTemplates.length)
-                ];
-            setPromoResult(template.replace('{name}', productInput.trim()));
-            setIsGenerating(false);
-        }, 1100);
+        const result = await generatePromoAssets(productInput);
+
+        setPromoResult(result.text);
+        setGeneratedImage(result.image);
+        setAiError(result.error);
+        setIsGenerating(false);
     };
 
     return (
@@ -113,13 +112,13 @@ export default function Welcome({ auth, canLogin, canRegister }) {
 
                         <div className="hidden items-center gap-8 md:flex">
                             <a href="#fitur" className="text-sm font-bold text-slate-600 transition-colors hover:text-black">
-                                Fitur
+                                Features
                             </a>
                             <a href="#cara-kerja" className="text-sm font-bold text-slate-600 transition-colors hover:text-black">
-                                Cara Kerja
+                                How It Works
                             </a>
                             <a href="#harga" className="text-sm font-bold text-slate-600 transition-colors hover:text-black">
-                                Harga
+                                Pricing
                             </a>
                             {auth?.user ? (
                                 <Button asChild variant="dark">
@@ -147,13 +146,13 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                         <div className="border-t-2 border-slate-100 bg-white px-4 py-5 shadow-xl md:hidden">
                             <div className="flex flex-col gap-3">
                                 <a href="#fitur" className="rounded-2xl px-4 py-3 text-base font-bold text-slate-800 transition hover:bg-slate-100">
-                                    Fitur
+                                    Features
                                 </a>
                                 <a href="#cara-kerja" className="rounded-2xl px-4 py-3 text-base font-bold text-slate-800 transition hover:bg-slate-100">
-                                    Cara Kerja
+                                    How It Works
                                 </a>
                                 <a href="#harga" className="rounded-2xl px-4 py-3 text-base font-bold text-slate-800 transition hover:bg-slate-100">
-                                    Harga
+                                    Pricing
                                 </a>
                                 {auth?.user ? (
                                     <Button asChild className="mt-2 w-full" variant="default">
@@ -167,7 +166,7 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                 ) : null}
                                 {!auth?.user && canRegister ? (
                                     <Button asChild className="w-full" variant="secondary">
-                                        <Link href={route('register')}>Daftar Gratis</Link>
+                                        <Link href={route('register')}>Register Free</Link>
                                     </Button>
                                 ) : null}
                             </div>
@@ -183,33 +182,33 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                         <div className="max-w-2xl animate-slide-up-fade">
                             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-100 px-4 py-2 text-sm font-bold text-orange-600">
                                 <Store className="h-4 w-4" />
-                                <span>Solusi Kasir Pintar UMKM</span>
+                                <span>Smart POS Solution for SMBs</span>
                             </div>
                             <h1 className="text-balance text-5xl font-bold leading-tight text-black lg:text-6xl">
-                                Jualan Makin Sat Set Pakai{' '}
+                                Sell Faster &amp; Smarter with{' '}
                                 <span className="inline-block -rotate-2 text-orange-500">
                                     QR Code!
                                 </span>
                             </h1>
                             <p className="mt-6 max-w-xl text-xl font-medium leading-relaxed text-slate-600">
-                                Aplikasi kasir yang paling ngerti pedagang toko. Tambah produk,
-                                otomatis bikin QR code, bantu scan produk sambil jalan, dan siap
-                                dipakai untuk fitur AI promosi.
+                                The POS app that truly understands shop owners. Add products,
+                                auto-generate QR codes, scan items on the go, and leverage
+                                AI-powered promo features.
                             </p>
 
                             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                                 <Button asChild size="lg">
                                     <Link href={demoHref}>
-                                        Mulai Sekarang <ArrowRight className="ml-2 h-5 w-5" />
+                                        Get Started <ArrowRight className="ml-2 h-5 w-5" />
                                     </Link>
                                 </Button>
                                 {canRegister && !auth?.user ? (
                                     <Button asChild size="lg" variant="secondary">
-                                        <Link href={route('register')}>Lihat Demo</Link>
+                                        <Link href={route('register')}>View Demo</Link>
                                     </Button>
                                 ) : (
                                     <Button asChild size="lg" variant="secondary">
-                                        <Link href={route('dashboard')}>Lihat Demo</Link>
+                                        <Link href={route('dashboard')}>View Demo</Link>
                                     </Button>
                                 )}
                             </div>
@@ -226,7 +225,7 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                         C
                                     </div>
                                 </div>
-                                <p>Dipercaya oleh 5.000+ toko di Indonesia</p>
+                                <p>Trusted by 5,000+ stores across Indonesia</p>
                             </div>
                         </div>
 
@@ -241,7 +240,7 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                                 <Menu className="h-4 w-4" />
                                             </div>
                                         </div>
-                                        <p className="text-sm text-orange-100">Total Penjualan Hari Ini</p>
+                                        <p className="text-sm text-orange-100">Today's Total Sales</p>
                                         <p className="text-3xl font-bold">Rp 1.250.000</p>
                                     </div>
 
@@ -253,7 +252,7 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                             <div>
                                                 <h4 className="font-bold text-slate-950">Kopi Susu Gula Aren</h4>
                                                 <p className="font-bold text-orange-500">Rp 18.000</p>
-                                                <p className="text-xs text-slate-400">Scan QR untuk bayar</p>
+                                                <p className="text-xs text-slate-400">Scan QR to pay</p>
                                             </div>
                                         </div>
 
@@ -275,7 +274,7 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                                 type="button"
                                                 className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white"
                                             >
-                                                Bayar
+                                                Pay
                                             </button>
                                         </div>
                                     </div>
@@ -289,11 +288,11 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="mx-auto mb-16 max-w-3xl text-center">
                             <h2 className="text-4xl font-bold text-black">
-                                Satu Aplikasi, Semua Kebutuhan Toko
+                                One App, All Your Store Needs
                             </h2>
                             <p className="mt-4 text-xl font-medium text-slate-600">
-                                Tinggalkan cara lama. Kelola produk, bikin QR code, dan layani
-                                pelanggan dengan sistem POS yang ringan tapi tetap berkarakter.
+                                Leave the old ways behind. Manage products, generate QR codes, and
+                                serve customers with a lightweight yet powerful POS system.
                             </p>
                         </div>
 
@@ -334,14 +333,14 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                             <div className="lg:w-1/2">
                                 <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-sm font-bold text-orange-600">
                                     <Sparkles className="h-4 w-4" />
-                                    <span>Fitur Cerdas AI</span>
+                                    <span>Smart AI Feature</span>
                                 </div>
                                 <h2 className="text-4xl font-bold text-black">
-                                    Bingung Bikin Kata-kata Promosi?
+                                    Struggling with Promo Copy?
                                 </h2>
                                 <p className="mt-4 text-xl font-medium text-slate-600">
-                                    Tinggal ketik nama produkmu, lalu qpay bikin simulasi caption
-                                    promo yang siap kamu olah lagi nanti ke backend AI beneran.
+                                    Just type your product name and qpay generates a promo caption
+                                    simulation.
                                 </p>
 
                                 <div className="mt-8 flex -space-x-4">
@@ -360,13 +359,13 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                             <div className="w-full lg:w-1/2">
                                 <div className="rounded-[2rem] border-2 border-slate-100 bg-slate-50 p-6">
                                     <label className="mb-2 block text-sm font-bold text-slate-700">
-                                        Nama Produk Kamu
+                                        Your Product Name
                                     </label>
                                     <input
                                         type="text"
                                         value={productInput}
                                         onChange={(event) => setProductInput(event.target.value)}
-                                        placeholder="Contoh: Kopi Susu Gula Aren Spesial"
+                                        placeholder="Example: Special Brown Sugar Latte"
                                         className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 font-semibold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-0"
                                     />
 
@@ -381,27 +380,27 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                         {isGenerating ? (
                                             <>
                                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                Sedang Meracik Keajaiban...
+                                                Crafting Magic...
                                             </>
                                         ) : (
                                             <>
                                                 <Wand2 className="mr-2 h-5 w-5" />
-                                                Buatkan Caption
+                                                Generate Caption
                                             </>
                                         )}
                                     </Button>
 
                                     <div className="relative mt-6 flex min-h-[220px] flex-col items-center rounded-2xl border-2 border-slate-100 bg-white p-5">
-                                        {!isGenerating && !promoResult ? (
+                                        {!isGenerating && !promoResult && !generatedImage && !aiError ? (
                                             <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm font-medium text-slate-400">
-                                                Hasil tulisan dan preview visual AI akan muncul di sini...
+                                                AI-generated text and visual preview will appear here...
                                             </div>
                                         ) : null}
 
                                         {isGenerating ? (
                                             <div className="flex w-full flex-col items-center gap-4 py-4 animate-pulse">
                                                 <div className="flex h-32 w-32 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-100">
-                                                    <Package className="h-8 w-8 text-slate-300" />
+                                                    <ImageIcon className="h-8 w-8 text-slate-300" />
                                                 </div>
                                                 <div className="w-full space-y-2">
                                                     <div className="h-4 w-full rounded bg-slate-100" />
@@ -411,15 +410,41 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                             </div>
                                         ) : null}
 
+                                        {aiError ? (
+                                            <div className="mb-4 w-full text-center text-sm font-medium text-red-500">
+                                                {aiError}
+                                            </div>
+                                        ) : null}
+
                                         {!isGenerating && promoResult ? (
                                             <>
-                                                <MockPreview productName={productInput.trim()} />
+                                                {generatedImage ? (
+                                                    <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-2">
+                                                        <img
+                                                            src={generatedImage}
+                                                            alt={productInput}
+                                                            className="h-auto w-full max-w-[200px] rounded-lg object-contain mix-blend-multiply"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <MockPreview productName={productInput.trim()} />
+                                                )}
                                                 <p className="w-full whitespace-pre-wrap text-center font-medium text-slate-800">
                                                     {promoResult}
                                                 </p>
                                             </>
                                         ) : null}
                                     </div>
+
+                                    {promoResult ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => navigator.clipboard.writeText(promoResult)}
+                                            className="mt-3 w-full text-center text-sm font-bold text-orange-500 transition-colors hover:text-black"
+                                        >
+                                            Copy Text
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>
@@ -432,10 +457,10 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                     <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="mb-16 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
                             <div className="max-w-xl">
-                                <h2 className="text-4xl font-bold">Gimana Cara Mulainya?</h2>
+                                <h2 className="text-4xl font-bold">How Do You Get Started?</h2>
                                 <p className="mt-4 text-xl font-medium text-slate-400">
-                                    Cuma butuh 3 langkah buat bikin tokomu lebih modern, cepat,
-                                    dan siap pakai AI di workflow penjualan.
+                                    Just 3 steps to make your store more modern, faster,
+                                    and ready to use AI in your sales workflow.
                                 </p>
                             </div>
                         </div>
@@ -449,20 +474,20 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                             {[
                                 {
                                     number: '1',
-                                    title: 'Daftar Akun',
-                                    text: 'Masuk sebagai seller, siapkan toko, lalu mulai isi katalog tanpa setup yang ribet.',
+                                    title: 'Create Account',
+                                    text: 'Sign in as a seller, set up your store, and start filling your catalog without any complicated setup.',
                                     tone: 'orange',
                                 },
                                 {
                                     number: '2',
-                                    title: 'Buat Katalog',
-                                    text: 'Tambah produk, tentukan harga, dan tampilkan QR code produk langsung dari dashboard.',
+                                    title: 'Build Catalog',
+                                    text: 'Add products, set prices, and display product QR codes directly from your dashboard.',
                                     tone: 'white',
                                 },
                                 {
                                     number: '3',
-                                    title: 'Mulai Jualan!',
-                                    text: 'Pembeli scan barang sambil jalan, kasir cek total, lalu transaksi selesai dengan cepat.',
+                                    title: 'Start Selling!',
+                                    text: 'Customers scan items on the go, cashier checks the total, and transactions complete in seconds.',
                                     tone: 'orange',
                                 },
                             ].map((step) => (
@@ -490,19 +515,19 @@ export default function Welcome({ auth, canLogin, canRegister }) {
 
                     <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
                         <h2 className="text-4xl font-bold md:text-5xl">
-                            Siap Bikin Tokomu Lebih Canggih?
+                            Ready to Upgrade Your Store?
                         </h2>
                         <p className="mx-auto mt-6 max-w-2xl text-xl font-medium text-black/80">
-                            Tinggalkan buku catatan manual. Mulai kelola usahamu secara digital
-                            bersama ribuan UMKM lainnya hari ini.
+                            Ditch the manual notebook. Start managing your business digitally
+                            alongside thousands of other small businesses today.
                         </p>
                         <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
                             <Button asChild size="lg" variant="dark">
-                                <Link href={demoHref}>Daftar qpay Sekarang</Link>
+                                <Link href={demoHref}>Sign Up for qpay Now</Link>
                             </Button>
                         </div>
                         <p className="mt-6 text-sm font-bold text-black/60">
-                            *Gratis 100% untuk UMKM kecil.
+                            *100% Free for small businesses.
                         </p>
                     </div>
                 </section>
@@ -520,28 +545,28 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                                     </span>
                                 </div>
                                 <p className="max-w-sm font-medium text-slate-600">
-                                    Sahabat sejati pedagang UMKM. Aplikasi POS yang bikin tambah
-                                    produk, QR code, dan kasir semudah tepuk tangan.
+                                    The true companion for small business owners. A POS app that makes
+                                    adding products, generating QR codes, and running the cashier as easy as a clap.
                                 </p>
                             </div>
 
                             <div>
-                                <h4 className="mb-4 text-lg font-bold text-black">Produk</h4>
+                                <h4 className="mb-4 text-lg font-bold text-black">Product</h4>
                                 <ul className="space-y-3 font-medium text-slate-600">
-                                    <li>Fitur POS</li>
-                                    <li>Generator QR Code</li>
-                                    <li>Manajemen Stok</li>
-                                    <li>Harga</li>
+                                    <li>POS Features</li>
+                                    <li>QR Code Generator</li>
+                                    <li>Stock Management</li>
+                                    <li>Pricing</li>
                                 </ul>
                             </div>
 
                             <div>
-                                <h4 className="mb-4 text-lg font-bold text-black">Bantuan</h4>
+                                <h4 className="mb-4 text-lg font-bold text-black">Support</h4>
                                 <ul className="space-y-3 font-medium text-slate-600">
-                                    <li>Pusat Bantuan</li>
-                                    <li>Panduan Video</li>
-                                    <li>Hubungi CS</li>
-                                    <li>Komunitas UMKM</li>
+                                    <li>Help Center</li>
+                                    <li>Video Guides</li>
+                                    <li>Contact Support</li>
+                                    <li>SMB Community</li>
                                 </ul>
                             </div>
                         </div>
@@ -549,8 +574,8 @@ export default function Welcome({ auth, canLogin, canRegister }) {
                         <div className="flex flex-col items-center justify-between gap-4 border-t-2 border-slate-100 pt-8 text-sm font-medium text-slate-500 md:flex-row">
                             <p>© {new Date().getFullYear()} qpay Indonesia. All rights reserved.</p>
                             <div className="flex gap-6">
-                                <span>Privasi</span>
-                                <span>Syarat & Ketentuan</span>
+                                <span>Privacy</span>
+                                <span>Terms &amp; Conditions</span>
                             </div>
                         </div>
                     </div>
