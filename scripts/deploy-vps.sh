@@ -37,7 +37,7 @@ echo "[$(date -Iseconds)] Pulling latest branch '$BRANCH'"
 git pull --ff-only origin "$BRANCH"
 
 echo "[$(date -Iseconds)] Installing PHP dependencies"
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress --ignore-platform-reqs
 
 echo "[$(date -Iseconds)] Installing frontend dependencies"
 npm ci
