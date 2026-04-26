@@ -26,7 +26,12 @@ if [[ "$current_branch" != "$BRANCH" ]]; then
 fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
-  echo "Refusing deploy: working tree is dirty."
+  echo "Restoring tracked files modified by previous deploy..."
+  git checkout -- .
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Refusing deploy: working tree is dirty (untracked/staged changes)."
   git status --short
   exit 1
 fi
