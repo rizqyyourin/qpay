@@ -139,7 +139,8 @@ export default function Cart() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleQtyChange(item.id, item.qty + 1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-slate-600 shadow-sm transition-colors hover:bg-green-50 hover:text-green-500"
+                                                disabled={item.stock != null && item.qty >= item.stock}
+                                                className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-slate-600 shadow-sm transition-colors hover:bg-green-50 hover:text-green-500 disabled:opacity-40"
                                             >
                                                 <Plus className="h-3.5 w-3.5" />
                                             </button>

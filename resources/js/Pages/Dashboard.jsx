@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowLeft,
     ArrowRight,
     CheckCircle2,
@@ -13,11 +14,13 @@ import {
     QrCode,
     Receipt,
     RefreshCw,
+    ShoppingBag,
     ShoppingCart,
     Sparkles,
     Ticket,
     Timer,
     Trash2,
+    TrendingUp,
     UploadCloud,
     X,
     XCircle,
@@ -31,7 +34,7 @@ function formatCurrency(value) {
 }
 
 export default function Dashboard() {
-    const { auth, products, ai_enabled: serverAiEnabled, pending_orders: serverPendingOrders } = usePage().props;
+    const { auth, products, ai_enabled: serverAiEnabled, pending_orders: serverPendingOrders, monthly_revenue: monthlyRevenue = 0, monthly_orders: monthlyOrders = 0 } = usePage().props;
     const user = auth.user;
     const [aiEnabled, setAiEnabled] = useState(serverAiEnabled ?? false);
     const [aiToggling, setAiToggling] = useState(false);
@@ -78,6 +81,10 @@ export default function Dashboard() {
     const [pendingOrders, setPendingOrders] = useState(serverPendingOrders ?? []);
     const [confirmingId, setConfirmingId] = useState(null);
     const [cancellingId, setCancellingId] = useState(null);
+    const [orderModal, setOrderModal] = useState(null);
+    const [confirmedOrder, setConfirmedOrder] = useState(null);
+    const [countdown, setCountdown] = useState(3);
+    const countdownRef = useRef(null);
 
     // Auto-poll pending orders every 6 seconds
     useEffect(() => {
@@ -94,10 +101,27 @@ export default function Dashboard() {
         setPendingOrders(serverPendingOrders ?? []);
     }, [serverPendingOrders]);
 
-    const handleConfirmOrder = (orderId) => {
+    const handleConfirmOrder = (orderId, order = null) => {
         setConfirmingId(orderId);
         router.post(route('orders.confirm', orderId), {}, {
             preserveScroll: true,
+            onSuccess: () => {
+                if (order) {
+                    setConfirmedOrder(order);
+                    setCountdown(3);
+                    clearInterval(countdownRef.current);
+                    countdownRef.current = setInterval(() => {
+                        setCountdown((c) => {
+                            if (c <= 1) {
+                                clearInterval(countdownRef.current);
+                                setConfirmedOrder(null);
+                                return 3;
+                            }
+                            return c - 1;
+                        });
+                    }, 1000);
+                }
+            },
             onFinish: () => setConfirmingId(null),
         });
     };
@@ -768,16 +792,83 @@ export default function Dashboard() {
 
                         {/* Stats */}
                         <div className="border-b border-slate-100 p-5">
-                            <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400">Overview</p>
-                            <div className="mt-3 flex items-center justify-between rounded-2xl bg-black p-4 text-white">
-                                <div>
-                                    <p className="text-xs font-semibold text-slate-400">Active Products</p>
-                                    <p className="text-3xl font-black text-white">{products.length}</p>
-                                    <p className="text-xs font-medium text-orange-400">items for sale</p>
+                            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Overview</p>
+                            <div className="space-y-2">
+                                {/* Active products */}
+                                <div className="flex items-center justify-between rounded-2xl bg-black p-4 text-white">
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400">Active Products</p>
+                                        <p className="text-3xl font-black text-white">{products.length}</p>
+                                        <p className="text-xs font-medium text-orange-400">items for sale</p>
+                                    </div>
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500">
+                                        <Package className="h-6 w-6 text-black" />
+                                    </div>
                                 </div>
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500">
-                                    <Package className="h-6 w-6 text-black" />
+
+                                {/* Monthly revenue */}
+                                <div className="flex items-center justify-between rounded-2xl bg-orange-500 p-4 text-white">
+                                    <div>
+                                        <p className="text-xs font-semibold text-orange-100">Revenue this month</p>
+                                        <p className="text-xl font-black leading-tight">{formatCurrency(monthlyRevenue)}</p>
+                                    </div>
+                                    <TrendingUp className="h-8 w-8 text-white/60" />
                                 </div>
+
+                                {/* Monthly orders */}
+                                <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-4">
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400">Orders this month</p>
+                                        <p className="text-3xl font-black text-slate-800">{monthlyOrders}</p>
+                                        <p className="text-xs font-medium text-slate-400">confirmed transactions</p>
+                                    </div>
+                                    <ShoppingBag className="h-8 w-8 text-slate-300" />
+                                </div>
+
+                                {/* Low stock warning */}
+                                {products.some((p) => p.stock <= 5) && (
+                                    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-amber-700">Low Stock Warning</p>
+                                            <p className="text-xs text-amber-600">
+                                                {products
+                                                    .filter((p) => p.stock <= 5)
+                                                    .map((p) => `${p.name} (${p.stock})`)
+                                                    .join(', ')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Stock per product */}
+                                {products.length > 0 && (
+                                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            Stock per Product
+                                        </p>
+                                        <div className="space-y-1.5">
+                                            {products.map((p) => (
+                                                <div key={p.id} className="flex items-center justify-between gap-2">
+                                                    <span className="min-w-0 truncate text-xs font-medium text-slate-600">
+                                                        {p.name}
+                                                    </span>
+                                                    <span
+                                                        className={`shrink-0 text-xs font-black ${
+                                                            p.stock === 0
+                                                                ? 'text-red-500'
+                                                                : p.stock <= 5
+                                                                  ? 'text-amber-500'
+                                                                  : 'text-green-600'
+                                                        }`}
+                                                    >
+                                                        {p.stock} units
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -833,60 +924,32 @@ export default function Dashboard() {
                                         {pendingOrders.length} waiting
                                     </span>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                     {pendingOrders.map((order) => (
-                                        <div key={order.id} className="overflow-hidden rounded-2xl border-2 border-amber-200 bg-white shadow-sm">
-                                            <div className="flex items-center justify-between gap-4 border-b border-amber-100 bg-amber-50 px-5 py-3">
-                                                <div>
-                                                    <p className="text-xs font-bold uppercase tracking-wider text-amber-500">Order Code</p>
-                                                    <p className="font-mono text-2xl font-black tracking-widest text-slate-900">
-                                                        {order.code}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs font-bold text-slate-400">Total</p>
-                                                    <p className="text-lg font-black text-orange-500">
-                                                        {formatCurrency(order.total)}
-                                                    </p>
-                                                </div>
+                                        <button
+                                            key={order.id}
+                                            type="button"
+                                            onClick={() => setOrderModal(order)}
+                                            className="group flex flex-col gap-2 rounded-2xl border-2 border-amber-200 bg-white p-4 text-left shadow-sm transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.98]"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-mono text-xl font-black tracking-widest text-slate-900">
+                                                    {order.code}
+                                                </span>
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
+                                                    <Timer className="h-3.5 w-3.5 text-amber-600" />
+                                                </span>
                                             </div>
-                                            <div className="px-5 py-3">
-                                                <div className="mb-3 space-y-1.5">
-                                                    {order.items.map((item, i) => (
-                                                        <div key={i} className="flex items-center justify-between gap-2 text-sm">
-                                                            <span className="text-slate-700">{item.name} <span className="text-slate-400">× {item.qty}</span></span>
-                                                            <span className="font-semibold text-slate-800">{formatCurrency(item.price * item.qty)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleConfirmOrder(order.id)}
-                                                        disabled={confirmingId === order.id || cancellingId === order.id}
-                                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-green-600 disabled:opacity-60"
-                                                    >
-                                                        {confirmingId === order.id ? (
-                                                            <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
-                                                        ) : (
-                                                            <><Receipt className="h-4 w-4" /> Confirm Order</>
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCancelOrder(order.id)}
-                                                        disabled={confirmingId === order.id || cancellingId === order.id}
-                                                        className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-500 transition-colors hover:bg-red-100 disabled:opacity-60"
-                                                    >
-                                                        {cancellingId === order.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <XCircle className="h-4 w-4" />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+                                            <p className="text-base font-black text-orange-500">
+                                                {formatCurrency(order.total)}
+                                            </p>
+                                            <p className="line-clamp-1 text-xs text-slate-400">
+                                                {order.items.map((i) => `${i.name} ×${i.qty}`).join(', ')}
+                                            </p>
+                                            <p className="text-xs font-semibold text-amber-600 group-hover:text-amber-700">
+                                                Tap to review →
+                                            </p>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -1030,6 +1093,141 @@ export default function Dashboard() {
                     </main>
                 </div>
             </div>
+
+            {/* Order detail modal */}
+            {orderModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+                    onClick={(e) => e.target === e.currentTarget && setOrderModal(null)}
+                >
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-wider text-amber-500">Order Code</p>
+                                <p className="font-mono text-3xl font-black tracking-widest text-slate-900">
+                                    {orderModal.code}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setOrderModal(null)}
+                                className="mt-1 rounded-full bg-slate-100 p-2 transition-colors hover:bg-slate-200"
+                            >
+                                <X className="h-4 w-4 text-slate-500" />
+                            </button>
+                        </div>
+
+                        {/* Items */}
+                        <div className="mb-5 rounded-xl bg-slate-50 p-4">
+                            <div className="space-y-2">
+                                {orderModal.items.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                                        <span className="text-slate-700">
+                                            {item.name}{' '}
+                                            <span className="text-slate-400">× {item.qty}</span>
+                                        </span>
+                                        <span className="font-bold text-slate-800">
+                                            {formatCurrency(item.price * item.qty)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span className="font-bold text-slate-500">Total</span>
+                                <span className="text-xl font-black text-orange-500">
+                                    {formatCurrency(orderModal.total)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleConfirmOrder(orderModal.id, orderModal);
+                                    setOrderModal(null);
+                                }}
+                                disabled={confirmingId === orderModal.id || cancellingId === orderModal.id}
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500 py-3 text-sm font-bold text-white shadow-[0_3px_0_0_#16a34a] transition-all active:translate-y-0.5 active:shadow-none hover:bg-green-600 disabled:opacity-60"
+                            >
+                                {confirmingId === orderModal.id ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
+                                ) : (
+                                    <><Receipt className="h-4 w-4" /> Confirm Order</>
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleCancelOrder(orderModal.id);
+                                    setOrderModal(null);
+                                }}
+                                disabled={confirmingId === orderModal.id || cancellingId === orderModal.id}
+                                className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-500 transition-colors hover:bg-red-100 disabled:opacity-60"
+                            >
+                                {cancellingId === orderModal.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <XCircle className="h-4 w-4" />
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Order confirmed success modal */}
+            {confirmedOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+                    <div className="flex w-full max-w-sm flex-col items-center rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-150">
+                        <div className="mb-5 flex h-20 w-20 rotate-3 items-center justify-center rounded-[1.5rem] bg-green-500 shadow-[0_6px_0_0_#16a34a]">
+                            <CheckCircle2 className="h-10 w-10 -rotate-3 text-white" strokeWidth={2.5} />
+                        </div>
+                        <h2 className="mb-1 text-2xl font-black text-slate-900">Order Confirmed!</h2>
+                        <p className="mb-5 text-sm text-slate-500">
+                            Order{' '}
+                            <span className="font-mono font-black text-slate-800">{confirmedOrder.code}</span>{' '}
+                            has been approved.
+                        </p>
+                        <div className="mb-6 w-full rounded-xl bg-slate-50 p-4">
+                            <div className="space-y-1.5">
+                                {confirmedOrder.items.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                                        <span className="text-slate-600">
+                                            {item.name} <span className="text-slate-400">× {item.qty}</span>
+                                        </span>
+                                        <span className="font-bold text-slate-800">
+                                            {formatCurrency(item.price * item.qty)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span className="font-bold text-slate-500">Total</span>
+                                <span className="text-xl font-black text-green-600">
+                                    {formatCurrency(confirmedOrder.total)}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-400">
+                            Returning in <span className="font-black text-slate-700">{countdown}</span>...
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                clearInterval(countdownRef.current);
+                                setConfirmedOrder(null);
+                                setCountdown(3);
+                            }}
+                            className="mt-3 text-xs font-bold text-slate-400 underline hover:text-slate-600"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

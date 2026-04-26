@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { addToCart, getCartCount } from '@/lib/cart';
+import { addToCart, getCart, getCartCount } from '@/lib/cart';
 
 function formatCurrency(value) {
     return `Rp ${value.toLocaleString('id-ID')}`;
@@ -24,8 +24,10 @@ export default function Buy() {
     const [cartCount, setCartCount] = useState(0);
     const [addedState, setAddedState] = useState('idle'); // idle | added
 
-    const isOutOfStock = product.stock === 0;
-    const maxQty = Math.min(product.stock, 99);
+    const alreadyInCart = getCart().find((i) => i.id === product.id)?.qty ?? 0;
+    const availableStock = Math.max(product.stock - alreadyInCart, 0);
+    const isOutOfStock = availableStock === 0;
+    const maxQty = Math.min(availableStock, 99);
 
     useEffect(() => {
         setCartCount(getCartCount());
@@ -37,8 +39,7 @@ export default function Buy() {
     const handleAddToCart = () => {
         if (isOutOfStock || addedState === 'added') return;
         addToCart(product, qty);
-        setAddedState('added');
-        setTimeout(() => setAddedState('idle'), 2000);
+        window.location.href = '/cart';
     };
 
     return (
@@ -101,14 +102,16 @@ export default function Buy() {
                     <div className="mt-2">
                         <span
                             className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                                product.stock === 0
+                                availableStock === 0
                                     ? 'bg-red-100 text-red-600'
-                                    : product.stock <= 5
+                                    : availableStock <= 5
                                       ? 'bg-amber-100 text-amber-700'
                                       : 'bg-green-100 text-green-700'
                             }`}
                         >
-                            {product.stock === 0 ? 'Out of stock' : `${product.stock} in stock`}
+                            {availableStock === 0
+                                ? (alreadyInCart > 0 ? 'All stock in cart' : 'Out of stock')
+                                : `${availableStock} in stock${alreadyInCart > 0 ? ` (${alreadyInCart} in cart)` : ''}`}
                         </span>
                     </div>
                 </div>

@@ -10,7 +10,14 @@ export default function OrderStatus() {
     const { order: initialOrder } = usePage().props;
 
     const [status, setStatus] = useState(initialOrder.status);
+    const [elapsed, setElapsed] = useState(
+        Math.floor((Date.now() - new Date(initialOrder.created_at).getTime()) / 1000),
+    );
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [approveLoading, setApproveLoading] = useState(false);
+    const [actionError, setActionError] = useState(null);
     const timerRef = useRef(null);
+    const elapsedRef = useRef(null);
 
     // Poll for status changes while pending
     useEffect(() => {
@@ -31,6 +38,57 @@ export default function OrderStatus() {
 
         return () => clearInterval(timerRef.current);
     }, [status]);
+
+    // Track elapsed seconds for manual approve unlock
+    useEffect(() => {
+        if (status !== 'pending') return;
+
+        elapsedRef.current = setInterval(() => {
+            setElapsed(Math.floor((Date.now() - new Date(initialOrder.created_at).getTime()) / 1000));
+        }, 1000);
+
+        return () => clearInterval(elapsedRef.current);
+    }, [status]);
+
+    const handleCancel = async () => {
+        if (!window.confirm('Are you sure you want to cancel this order?')) return;
+        setCancelLoading(true);
+        setActionError(null);
+        try {
+            const res = await fetch(`/api/order/${initialOrder.code}/cancel`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                setStatus(data.status);
+            } else {
+                setActionError(data.error ?? 'Failed to cancel order.');
+            }
+        } catch {
+            setActionError('Network error. Please try again.');
+        } finally {
+            setCancelLoading(false);
+        }
+    };
+
+    const handleManualApprove = async () => {
+        if (!window.confirm('Confirm manual approval? Only do this if you have already paid in cash.')) return;
+        setApproveLoading(true);
+        setActionError(null);
+        try {
+            const res = await fetch(`/api/order/${initialOrder.code}/approve`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                setStatus(data.status);
+            } else {
+                setActionError(data.error ?? 'Failed to approve order.');
+            }
+        } catch {
+            setActionError('Network error. Please try again.');
+        } finally {
+            setApproveLoading(false);
+        }
+    };
+
+    const showManualApprove = elapsed >= 60;
 
     const total = initialOrder.total;
     const items = initialOrder.items;
@@ -186,6 +244,34 @@ export default function OrderStatus() {
                         <p className="mt-6 text-center text-xs text-slate-400">
                             This page auto-updates. Keep it open until confirmed.
                         </p>
+
+                        {/* Action buttons */}
+                        <div className="mt-6 flex w-full flex-col gap-3">
+                            {showManualApprove && (
+                                <button
+                                    onClick={handleManualApprove}
+                                    disabled={approveLoading}
+                                    className="w-full rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-[0_4px_0_0_#c2410c] transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-60"
+                                >
+                                    {approveLoading ? 'Processing...' : 'Approve Manually (already paid cash)'}
+                                </button>
+                            )}
+                            <button
+                                onClick={handleCancel}
+                                disabled={cancelLoading}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-red-300 hover:text-red-600 disabled:opacity-60"
+                            >
+                                {cancelLoading ? 'Cancelling...' : 'Cancel Order'}
+                            </button>
+                            {!showManualApprove && (
+                                <p className="text-center text-xs text-slate-400">
+                                    Manual approval available in {60 - elapsed}s if cashier system fails.
+                                </p>
+                            )}
+                            {actionError && (
+                                <p className="text-center text-xs font-semibold text-red-500">{actionError}</p>
+                            )}
+                        </div>
                     </div>
 
                     <footer className="shrink-0 p-4 text-center">

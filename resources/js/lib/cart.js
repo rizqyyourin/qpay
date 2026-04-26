@@ -17,13 +17,15 @@ export function getCart() {
     }
 }
 
-export function addToCart({ id, name, price, image }, qty = 1) {
+export function addToCart({ id, name, price, image, stock }, qty = 1) {
     const cart = getCart();
+    const max = stock ?? 99;
     const idx = cart.findIndex((i) => i.id === id);
     if (idx >= 0) {
-        cart[idx].qty = Math.min(cart[idx].qty + qty, 99);
+        cart[idx].qty = Math.min(cart[idx].qty + qty, max);
+        cart[idx].stock = max; // keep stock in sync
     } else {
-        cart.push({ id, name, price, image: image ?? null, qty });
+        cart.push({ id, name, price, image: image ?? null, stock: max, qty: Math.min(qty, max) });
     }
     persist(cart);
     return cart;
@@ -37,7 +39,11 @@ export function removeFromCart(productId) {
 
 export function updateCartQty(productId, qty) {
     if (qty <= 0) return removeFromCart(productId);
-    const cart = getCart().map((i) => (i.id === productId ? { ...i, qty } : i));
+    const cart = getCart().map((i) => {
+        if (i.id !== productId) return i;
+        const max = i.stock ?? 99;
+        return { ...i, qty: Math.min(qty, max) };
+    });
     persist(cart);
     return cart;
 }

@@ -25,10 +25,12 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.c
 Route::get('/order/{code}', [OrderStatusController::class, 'show'])->name('order.status');
 
 Route::get('/dashboard', function () {
+    $user = auth()->user();
+
     return Inertia::render('Dashboard', [
-        'products'       => auth()->user()->products()->latest()->get(),
-        'ai_enabled'     => (bool) auth()->user()->ai_enabled,
-        'pending_orders' => auth()->user()->orders()
+        'products'        => $user->products()->latest()->get(),
+        'ai_enabled'      => (bool) $user->ai_enabled,
+        'pending_orders'  => $user->orders()
             ->with('items')
             ->where('status', 'pending')
             ->latest()
@@ -44,6 +46,16 @@ Route::get('/dashboard', function () {
                     'qty'   => $item->qty,
                 ]),
             ]),
+        'monthly_revenue' => $user->orders()
+            ->where('status', 'confirmed')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('total'),
+        'monthly_orders'  => $user->orders()
+            ->where('status', 'confirmed')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count(),
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
