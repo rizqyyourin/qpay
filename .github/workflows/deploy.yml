@@ -1,0 +1,70 @@
+name: Deploy QPay
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-qpay-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_DIR: /var/www/qpay
+      APP_HOST: qpay.yourin.my.id
+      BRANCH: main
+      PHP_FPM_SERVICE: php8.2-fpm
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_sqlite
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Validate frontend build
+        run: npm run build
+
+      - name: Configure SSH access
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          : "${VPS_PORT:=22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${VPS_PORT}" -H "${VPS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          : "${VPS_PORT:=22}"
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT}" "${VPS_USER}@${VPS_HOST}" \
+            "export APP_DIR='${APP_DIR}' APP_HOST='${APP_HOST}' BRANCH='${BRANCH}' PHP_FPM_SERVICE='${PHP_FPM_SERVICE}'; cd '${APP_DIR}' && bash scripts/deploy-vps.sh"
