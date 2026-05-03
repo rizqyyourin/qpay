@@ -7,6 +7,7 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,36 +28,47 @@ Route::get('/order/{code}', [OrderStatusController::class, 'show'])->name('order
 Route::get('/dashboard', function () {
     $user = auth()->user();
 
-    return Inertia::render('Dashboard', [
-        'products'        => $user->products()->latest()->get(),
-        'ai_enabled'      => (bool) $user->ai_enabled,
-        'pending_orders'  => $user->orders()
-            ->with('items')
-            ->where('status', 'pending')
-            ->latest()
-            ->get()
-            ->map(fn ($order) => [
-                'id'         => $order->id,
-                'code'       => $order->code,
-                'total'      => $order->total,
-                'created_at' => $order->created_at,
-                'items'      => $order->items->map(fn ($item) => [
-                    'name'  => $item->product_name,
-                    'price' => $item->price,
-                    'qty'   => $item->qty,
+    try {
+        return Inertia::render('Dashboard', [
+            'products'        => $user->products()->latest()->get(),
+            'ai_enabled'      => (bool) $user->ai_enabled,
+            'pending_orders'  => $user->orders()
+                ->with('items')
+                ->where('status', 'pending')
+                ->latest()
+                ->get()
+                ->map(fn ($order) => [
+                    'id'         => $order->id,
+                    'code'       => $order->code,
+                    'total'      => $order->total,
+                    'created_at' => $order->created_at,
+                    'items'      => $order->items->map(fn ($item) => [
+                        'name'  => $item->product_name,
+                        'price' => $item->price,
+                        'qty'   => $item->qty,
+                    ]),
                 ]),
-            ]),
-        'monthly_revenue' => $user->orders()
-            ->where('status', 'confirmed')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('total'),
-        'monthly_orders'  => $user->orders()
-            ->where('status', 'confirmed')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->count(),
-    ]);
+            'monthly_revenue' => $user->orders()
+                ->where('status', 'confirmed')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('total'),
+            'monthly_orders'  => $user->orders()
+                ->where('status', 'confirmed')
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
+        ]);
+    } catch (\Throwable $exception) {
+        Log::error('Dashboard render failed.', [
+            'user_id' => $user?->id,
+            'exception' => $exception::class,
+            'message' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+
+        throw $exception;
+    }
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
