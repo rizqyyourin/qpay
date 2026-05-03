@@ -9,6 +9,18 @@ PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.2-fpm}"
 PHP_FPM_BIN="${PHP_FPM_BIN:-php-fpm8.2}"
 LOG_FILE="${LOG_FILE:-/tmp/qpay-deploy.log}"
 
+require_minimum_php() {
+  local current_major current_minor
+  current_major="$(php -r 'echo PHP_MAJOR_VERSION;')"
+  current_minor="$(php -r 'echo PHP_MINOR_VERSION;')"
+
+  if (( current_major < 8 || (current_major == 8 && current_minor < 3) )); then
+    echo "Refusing deploy: PHP $(php -r 'echo PHP_VERSION;') is installed, but this app requires PHP >= 8.3."
+    echo "Update the server PHP runtime and set PHP_FPM_SERVICE/PHP_FPM_BIN accordingly before deploying."
+    exit 1
+  fi
+}
+
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 health_check() {
@@ -18,6 +30,9 @@ health_check() {
 echo "[$(date -Iseconds)] Starting qpay deploy in '$APP_DIR'"
 
 cd "$APP_DIR"
+
+echo "[$(date -Iseconds)] Detected PHP runtime $(php -r 'echo PHP_VERSION;')"
+require_minimum_php
 
 current_branch="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$current_branch" != "$BRANCH" ]]; then
@@ -42,7 +57,7 @@ echo "[$(date -Iseconds)] Pulling latest branch '$BRANCH'"
 git pull --ff-only origin "$BRANCH"
 
 echo "[$(date -Iseconds)] Installing PHP dependencies"
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress --ignore-platform-reqs
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
 
 echo "[$(date -Iseconds)] Installing frontend dependencies"
 npm ci
