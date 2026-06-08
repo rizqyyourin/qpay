@@ -1,9 +1,11 @@
 import InputError from '@/Components/InputError';
 import { Button } from '@/Components/ui/button';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Lock, Mail, QrCode } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, QrCode } from 'lucide-react';
+import { useState } from 'react';
 
-export default function Login({ status, canResetPassword }) {
+export default function Login({ status }) {
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -73,14 +75,26 @@ export default function Login({ status, canResetPassword }) {
                                     <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
                                     <input
                                         required
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         name="password"
                                         value={data.password}
                                         onChange={(event) => setData('password', event.target.value)}
                                         autoComplete="current-password"
                                         placeholder="••••••••"
-                                        className="w-full rounded-xl border-2 border-slate-200 py-3 pl-10 pr-4 outline-none transition-colors focus:border-orange-500 focus:ring-0"
+                                        className="w-full rounded-xl border-2 border-slate-200 py-3 pl-10 pr-12 outline-none transition-colors focus:border-orange-500 focus:ring-0"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        className="absolute right-3 top-3 text-slate-400 transition-colors hover:text-slate-600"
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-5 w-5" />
+                                        ) : (
+                                            <Eye className="h-5 w-5" />
+                                        )}
+                                    </button>
                                 </div>
                                 <InputError message={errors.password} className="mt-2" />
                             </div>
@@ -106,14 +120,6 @@ export default function Login({ status, canResetPassword }) {
                                 Register here
                             </Link>
                         </div>
-
-                        {canResetPassword ? (
-                            <div className="mt-3 text-center text-sm font-bold">
-                                <Link href={route('password.request')} className="text-slate-500 underline transition-colors hover:text-black">
-                                    Forgot password?
-                                </Link>
-                            </div>
-                        ) : null}
                     </div>
                 </div>
             </div>
