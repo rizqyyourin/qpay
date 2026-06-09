@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'price'       => 'required|integer|min:0',
+            'discount'    => 'nullable|integer|min:0',
             'description' => 'nullable|string',
             'image'       => 'nullable|string',
             'image_file'  => 'nullable|file|mimes:jpeg,jpg,png,webp,gif|max:5120', // 5 MB
@@ -29,6 +31,7 @@ class ProductController extends Controller
         }
 
         unset($validated['image_file']);
+        $validated['discount'] = $validated['discount'] ?? 0;
         $request->user()->products()->create($validated);
 
         return redirect()->route('dashboard');
@@ -39,9 +42,22 @@ class ProductController extends Controller
         abort_unless($product->user_id === $request->user()->id, 403);
 
         $validated = $request->validate([
+            'name'        => 'sometimes|required|string|max:255',
+            'price'       => 'sometimes|required|integer|min:0',
+            'discount'    => 'nullable|integer|min:0',
+            'stock'       => 'sometimes|required|integer|min:0',
             'description' => 'nullable|string',
             'image'       => 'nullable|string',
+            'image_file'  => 'nullable|file|mimes:jpeg,jpg,png,webp,gif|max:5120',
         ]);
+
+        if ($request->hasFile('image_file')) {
+            $validated['image'] = Storage::url(
+                $request->file('image_file')->store('product-images', 'public')
+            );
+        }
+
+        unset($validated['image_file']);
 
         $product->update($validated);
 
@@ -110,5 +126,50 @@ class ProductController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Record a manual sale transaction directly from the seller dashboard.
+     */
+    public function manualSale(Request $request, Product $product): JsonResponse
+    {
+        abort_unless($product->user_id === $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'qty'        => 'required|integer|min:1',
+            'unit_price' => 'required|integer|min:0',
+        ]);
+
+        $qty       = $validated['qty'];
+        $unitPrice = $validated['unit_price'];
+        $total     = $unitPrice * $qty;
+
+        // Generate unique 6-char order code
+        do {
+            $code = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6));
+        } while (Order::where('code', $code)->exists());
+
+        $order = Order::create([
+            'user_id' => $request->user()->id,
+            'code'    => $code,
+            'status'  => 'confirmed', // Manual sales are auto-confirmed
+            'total'   => $total,
+        ]);
+
+        $order->items()->create([
+            'product_id'   => $product->id,
+            'product_name' => $product->name,
+            'price'        => $unitPrice,
+            'qty'          => $qty,
+        ]);
+
+        // Decrement stock
+        $product->decrement('stock', $qty);
+
+        return response()->json([
+            'success' => true,
+            'order_code' => $code,
+            'total' => $total,
+        ]);
     }
 }

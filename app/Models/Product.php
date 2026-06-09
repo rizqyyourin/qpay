@@ -11,7 +11,7 @@ class Product extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['user_id', 'name', 'price', 'description', 'image', 'stock'];
+    protected $fillable = ['user_id', 'name', 'price', 'discount', 'description', 'image', 'stock'];
 
     public function user(): BelongsTo
     {
