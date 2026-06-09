@@ -1,0 +1,27 @@
+--- a/vendor/symfony/http-foundation/Request.php
++++ b/vendor/symfony/http-foundation/Request.php
+@@ -282,11 +282,17 @@ class Request
+      */
+     public static function createFromGlobals(): static
+     {
+         if (!\in_array($_SERVER['REQUEST_METHOD'] ?? null, ['PUT', 'DELETE', 'PATCH', 'QUERY'], true)) {
+             return self::createRequestFromFactory($_GET, $_POST, [], $_COOKIE, $_FILES, $_SERVER);
+         }
+ 
++        $post = $_POST;
++        $files = $_FILES;
++        
++        if (\function_exists('request_parse_body')) {
+-        try {
+-            [$post, $files] = request_parse_body();
+-        } catch (\RequestParseBodyException) {
+-            $post = $_POST;
+-            $files = $_FILES;
++            try {
++                [$post, $files] = request_parse_body();
++            } catch (\RequestParseBodyException) {
++                // Fallback to $_POST and $_FILES
++            }
+         }
+ 
+         return self::createRequestFromFactory($_GET, $post, [], $_COOKIE, $files, $_SERVER);
