@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'dev@qpay.co.id'],
             [
                 'name' => 'Shop Euy',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('Qpay123@'),
                 'email_verified_at' => now(),
             ]
         );

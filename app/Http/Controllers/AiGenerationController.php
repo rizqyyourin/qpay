@@ -94,9 +94,18 @@ class AiGenerationController extends Controller
             return null;
         }
 
+        $extension = 'jpg';
         $contentType = $response->header('Content-Type', 'image/jpeg');
+        if (str_contains($contentType, 'png')) {
+            $extension = 'png';
+        } elseif (str_contains($contentType, 'webp')) {
+            $extension = 'webp';
+        }
 
-        return sprintf('data:%s;base64,%s', $contentType, base64_encode($response->body()));
+        $filename = 'ai-' . \Illuminate\Support\Str::uuid() . '.' . $extension;
+        \Illuminate\Support\Facades\Storage::disk('public')->put('product-images/' . $filename, $response->body());
+
+        return \Illuminate\Support\Facades\Storage::url('product-images/' . $filename);
     }
 
     protected function handleJsonFailure(Response $response): array
