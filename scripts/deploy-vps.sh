@@ -45,10 +45,20 @@ echo "[$(date -Iseconds)] Installing PHP dependencies"
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress --ignore-platform-reqs
 
 echo "[$(date -Iseconds)] Installing frontend dependencies"
-npm ci
+if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
+  pnpm install --frozen-lockfile
+elif [[ -f package-lock.json ]]; then
+  npm ci
+else
+  npm install
+fi
 
 echo "[$(date -Iseconds)] Building frontend assets"
-npm run build
+if command -v pnpm >/dev/null 2>&1 && [[ -f pnpm-lock.yaml ]]; then
+  pnpm run build
+else
+  npm run build
+fi
 
 echo "[$(date -Iseconds)] Running database migrations"
 php artisan migrate --force
